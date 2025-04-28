@@ -14,30 +14,24 @@ CAPEX
 interest_rate = 0.04
 inflation_rate = 0.025
 
-""" Procurement cost in EUR """
-proc_12m_beb = 370000
-proc_18m_beb = 603000
-
-""" Procurement battery in € per kWh."""
-proc_battery = 350
-
-""" depot charging (dc)"""
-proc_dc_station = 3400000
-proc_dc_slot = 100000
-
-""" terminal stop charging (tsc)"""
-proc_tsc_station = 500000
-proc_tsc_slot = 275000
-
-""" Useful life in years"""
-uf_12m_beb = 12
-uf_18m_beb = 12
-uf_battery = 6 # must be an integer divisor of the useful life of the buses.
-uf_dc_station = 20
-uf_dc_slot = 20
-uf_tsc_station = 20
-uf_tsc_slot = 20
-
+# asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation)
+Vehicles = [
+    ("Ebusco 3.0 12", 370000, 12, 0.025),
+    ("Solaris Urbino 18", 603000, 12, 0.025),
+    ("Alexander Dennis Enviro500EV", 700000, 12, 0.025)
+]
+# procurement cost per kWh
+Battery = [
+    ("Ebusco 3.0 12", 350, 6, -0.03),
+    ("Solaris Urbino 18",  350, 6, -0.03),
+    ("Alexander Dennis Enviro500EV", 350, 6, -0.03)
+]
+Charging_Stations = [
+    ("OC-station", 500000, 20, 0.02),
+    ("OC-slot", 275000, 20, 0.02),
+    ("DC-station", 3400000, 20, 0.02),
+    ("DC-slot", 500000, 20, 0.02)
+]
 """ 
 OPEX
 """
@@ -59,12 +53,10 @@ maint_infr_cost = 1000
 taxes = 400.50
 insurance = 300
 
-""" Price escalation factors (pef). There should be multiple pefs for different categories."""
+""" Cost escalation factors (cef / pef). There should be multiple CEFS for different categories."""
 pef_general = 0.02
 pef_wages = 0.02
-pef_battery = -0.03
 pef_fuel = 0.038
-cef_vehicle = 0.025
 
 """ Sumulation period can be manually inserted"""
 sim_period = None
