@@ -11,8 +11,6 @@ from sqlalchemy import create_engine, func
 
 import os
 
-import functions
-import get_data
 import parameters as p
 import functions as f
 import get_data as gd
@@ -53,23 +51,27 @@ if __name__ == "__main__":
 
         session.close()
 
+    # List with the number of charging infrastructure by type which should be replaced by a "get_data" function,
+    # which counts the charging infrastructure.
+    charging_stations_by_type = [
+        (SCENARIO_ID, "OC-station", 3),
+        (SCENARIO_ID, "OC-slot", 15),
+        (SCENARIO_ID, "DC-station", 1),
+        (SCENARIO_ID, "DC-slot",8)
+    ]
+
     """ 
     Parameters that can be determined from the eFlips database 
     """
 
-    """ Number of buses used in the simulation """
-    num_12m_beb = vehicle_count_by_type[0][2]
-    num_18m_beb = vehicle_count_by_type[1][2]
+    # In order to calculate the TCO, a list with tuples is created. The tuples contain the name, the number, the
+    # procurement cost, the useful life and the cost escalation. This is done using the make_parameter_list method.
+    vehicles = f.make_parameter_list(vehicle_count_by_type, p.Vehicles)
+    battery_by_vehicle= f.make_parameter_list(battery_size, p.Battery)
+    charging_infrastructure_by_type = f.make_parameter_list(charging_stations_by_type, p.Charging_Stations)
 
-    """ Procurement cost of the batteries"""
-    proc_batt_12m_beb = battery_size[0][0]*p.proc_battery
-    proc_batt_18m_beb = battery_size[1][0] * p.proc_battery
-    print(proc_batt_12m_beb, proc_batt_18m_beb)
-    """ Number of charging slots and stations used in the simulation (depot charging [dc] and terminal stop charging [tsc])"""
-    num_dc_stations = 1
-    num_dc_slots = 8
-    num_tsc_stations = 3
-    num_tsc_slots = 15
+    # Calculate the total number of vehicles. This is needed in the OPEX calculation.
+    total_number_vehicles = sum(x[1] for x in vehicles)
 
     """ Energy / Fuel consumption in fuel unit"""
     fuel_consumption = total_energy_consumption[1]
@@ -81,25 +83,39 @@ if __name__ == "__main__":
     driver_hours = total_driver_hours[1]
 
     """ Some parameters are put into lists to make the calculations easier"""
-    proc_list = [p.proc_12m_beb, proc_batt_12m_beb, p.proc_18m_beb, proc_batt_18m_beb, p.proc_dc_station, p.proc_dc_slot, p.proc_tsc_station, p.proc_tsc_slot]
-    uf_list = [p.uf_12m_beb, p.uf_battery, p.uf_18m_beb, p.uf_battery, p.uf_dc_station, p.uf_dc_slot, p.uf_tsc_station, p.uf_tsc_slot]
-    num_list = [num_12m_beb, num_12m_beb, num_18m_beb, num_18m_beb, num_dc_stations, num_dc_slots, num_tsc_stations, num_tsc_slots]
-    capex_cef_list = [p.cef_vehicle, p.cef_vehicle, p.cef_vehicle, p.pef_battery, p.pef_general, p.pef_general, p.pef_general, p.pef_general]
-
     opex_price_list = [p.staff_cost, p.maint_cost, p.fuel_cost, p.insurance, p.taxes]
-    opex_amount_list = [driver_hours, fleet_mileage, fuel_consumption, (num_18m_beb+num_12m_beb), (num_18m_beb+num_12m_beb)]
-    opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_wages, p.pef_general, p.pef_general]
+    opex_amount_list = [driver_hours, fleet_mileage, fuel_consumption, total_number_vehicles, total_number_vehicles]
+    opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_fuel, p.pef_general, p.pef_general]
 
     """ 
     TCO calculation
     """
-
     """ Total CAPEX """
-    #total_proc_12m_beb = functions.total_proc_cef(p.proc_12m_beb, p.uf_12m_beb, p.project_duration, p.pef_general, p.interest_rate, p.inflation_rate)
+    # The CAPEX of the vehicles, the batteries and the infrastructure is calculated using the total_proc_cef method
+    # in order to obtain the CAPEX part of the TCO
     Total_CAPEX = 0
-    for i in range(len(proc_list)):
-        total_procurement_cost_per_asset = f.total_proc_cef(proc_list[i], uf_list[i], p.project_duration, capex_cef_list[i], p.interest_rate, p.inflation_rate)
-        Total_CAPEX += total_procurement_cost_per_asset * num_list[i]
+    # Vehicles
+    for vehicle in vehicles:
+        procurement_per_vehicle_type = f.total_proc_cef(vehicle[2], vehicle[3], p.project_duration, vehicle[4],
+                                                        p.interest_rate, p.inflation_rate)
+        Total_CAPEX += procurement_per_vehicle_type * vehicle[1]
+    # Batteries
+    for battery in battery_by_vehicle:
+        procurement_per_battery = number_batteries = 0
+        # to dertermine the number of batteries and the overall procurement cost, the respective vehicle number is
+        # matched with the respective battery
+        for vehicle in vehicles:
+            if battery[0] == vehicle[0]:
+                procurement_per_battery = battery[1] * battery[2]
+                number_batteries = vehicle[1]
+        procurement_per_battery_type = f.total_proc_cef(procurement_per_battery, battery[3], p.project_duration,
+                                                        battery[4], p.interest_rate, p.inflation_rate)
+        Total_CAPEX += procurement_per_battery_type * number_batteries
+    # Charging infrastructure
+    for char_infra in charging_infrastructure_by_type:
+        procurement_per_char_infra_type = f.total_proc_cef(char_infra[2], char_infra[3], p.project_duration,
+                                                               char_infra[4], p.interest_rate, p.inflation_rate)
+        Total_CAPEX += procurement_per_char_infra_type * char_infra[1]
 
     """ Total OPEX """
 
@@ -109,6 +125,7 @@ if __name__ == "__main__":
         for j in range(len(opex_price_list)):
             total_opex_in_respective_year += f.future_cost(opex_pefs_list[j], opex_price_list[j], i)[0] * opex_amount_list[j]
         Total_OPEX += f.net_present_value(total_opex_in_respective_year, i, p.inflation_rate)[0]
+
     """ Calculate three kinds of TCO """
 
     """ TCO over project duration """
@@ -127,30 +144,9 @@ if __name__ == "__main__":
           ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, ann_tco))
     print('The specific total cost of ownership over the project duration'
           ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, sp_tco_pd))
-    print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy consumption of {:.2f} kWh/km.'.format(fleet_mileage, (num_18m_beb+num_12m_beb), (total_energy_consumption[1] / total_fleet_mileage[1])))
+    print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
+          'consumption of {:.2f} kWh/km.'.format(fleet_mileage, (total_number_vehicles),
+                                                 (total_energy_consumption[1] / total_fleet_mileage[1])))
 
-    """ " Annuity of a single bus is calculated "
-    ann=annuity(proc_12m_beb, project_duration, interest_rate)
-    for i in range(project_duration):
-        print(net_present_value(ann, i))
-
-    "Total procurement cost of a single bus is calculated."
-    t_p_c = total_proc(proc_12m_beb, project_duration, interest_rate, inflation_rate)
-    print("Total procurement cost of a single 12m bus adjusted for inflation:",t_p_c)
-
-    t_p_c_npv = 0
-    for i in range(project_duration):
-        t_p_c_npv += net_present_value(ann, i, inflation_rate)[0]
-    print("Total procurement cost of a single 12m bus adjusted for inflation:", t_p_c_npv)"""
-
-    """
-        print(vehicle_count_by_type)
-        print(charging_infra_count_by_type)
-        print(total_energy_consumption)
-        print(fleet_mileage_by_vehicle_type)
-        print(total_fleet_mileage)
-        print(total_driver_hours)
-        print("Simulation period:", get_data.get_simulation_period(session, scenario))
-    """
     # Input und Output in eine csv Datei speichern:
     #Daten = ["procurement_12_m_bus", "procurement_18_m_bus", "procurement_double_decker_bus", "useful_life_12m_bus", "useful_life_18m_bus", "useful_life_decker_bus", "useful_life_double_decker_bus"]
