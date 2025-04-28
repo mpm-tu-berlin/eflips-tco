@@ -133,8 +133,9 @@ def get_simulation_period(session, scenario):
 """ This is a method, which returns the battery size by vehicle type. """
 def get_battery_size(session, scenario):
     result = session.query(
-        VehicleType.battery_capacity,
-        VehicleType.name
+        scenario.id,
+        VehicleType.name,
+        VehicleType.battery_capacity
     ).filter(
         VehicleType.scenario_id == scenario.id
     ).all()
