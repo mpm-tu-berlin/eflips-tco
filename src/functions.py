@@ -1,7 +1,7 @@
 import numpy as np
 
 import get_data
-
+import parameters as p
 
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate = 0.02):
     """
@@ -94,7 +94,7 @@ def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: 
     # Get a list with all procurements taking place over the project duration
     all_procurements = replacement_cost(procurement_cost, cost_escalation, useful_life, project_duration)
     # List with all annuities
-    annuities: list[int] = []
+    annuities: list[float] = []
     annuities_pv = np.zeros(project_duration)
     # Calculating all annuities over the project duration and saving them in a list
     for i in range(len(all_procurements)):
@@ -145,3 +145,29 @@ def calculate_total_staff_cost(driver_hours, annual_driver_cost, annual_hours_pe
     number_drivers = driver_hours*(1+buffer)%annual_hours_per_driver
     return (number_drivers, annual_driver_cost*number_drivers)
 
+def make_parameter_list(list_from_DB, asset_input_data,):
+    """
+    This method makes a list of the required parameters using for a certain asset. This enables the program to calculate
+    the TCO of scenarios with a variety of different vehicle types. The method matches the asset type obtained from eFLIPS
+    with the respective item of the list in parameter.py. The matching is done based on the name of the assets.
+    :param list_from_DB: A list with input parameters obtained from eFLIPS. The structure mus be as such: list[tuples[scenario.id, asset_type.name, asset_type.count]
+    :param asset_input_data: A lsit containing the financial input data of the asset. (asset_name, asset_cost, asset_useful_life, asset_cost_escalation).
+    :return: A list if the assets including all necessary information to calculate the TCO.
+    """
+    # In order to calculate the TCO, a list with tuples is created. The tuples contain the name, the number, the
+    # procurement cost, the useful life and the cost escalation.
+    assets: list[tuple[str, int, float, int, float]] = []
+    for i in range(len(list_from_DB)):
+        # Finding the right procurement cost, useful life and costescalation from the asset input data list.
+        procurement = useful_life = CEFs = None
+        for j in range(len(asset_input_data)):
+            if list_from_DB[i][1] == asset_input_data[j][0]:
+                procurement = asset_input_data[j][1]
+                useful_life = asset_input_data[j][2]
+                CEFs = asset_input_data[j][3]
+        assets.append((list_from_DB[i][1], list_from_DB[i][2], procurement, useful_life, CEFs))
+        # Test whether all required buses have been put in by the user.
+        if None in assets[i]:
+            print("Please check the input data and add all parameters. You need to add missing parameters for the asset:",
+                  list_from_DB[i][1])
+    return assets
