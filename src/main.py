@@ -92,7 +92,7 @@ if __name__ == "__main__":
     """
     """ Total CAPEX """
     # The CAPEX of the vehicles, the batteries and the infrastructure is calculated using the total_proc_cef method
-    # in order to obtain the CAPEX part of the TCO
+    # in order to obtain the CAPEX part of the TCO.
     Total_CAPEX = 0
     # Vehicles
     for vehicle in vehicles:
@@ -102,8 +102,8 @@ if __name__ == "__main__":
     # Batteries
     for battery in battery_by_vehicle:
         procurement_per_battery = number_batteries = 0
-        # to dertermine the number of batteries and the overall procurement cost, the respective vehicle number is
-        # matched with the respective battery
+        # To determine the number of batteries and the overall procurement cost, the respective vehicle number is
+        # matched with the respective battery based on the vehicle name.
         for vehicle in vehicles:
             if battery[0] == vehicle[0]:
                 procurement_per_battery = battery[1] * battery[2]
