@@ -4,8 +4,8 @@ from eflips.model import Vehicle, Station, Event, VehicleType, Route, Trip
 from sqlalchemy import or_
 from sqlalchemy import func
 import numpy as np
-
 import functions
+
 
 """ Calculating the number of vehicles per vehicle type."""
 def get_vehicle_count_by_type(session, scenario):
@@ -18,65 +18,61 @@ def get_vehicle_count_by_type(session, scenario):
         vt_count = session.query(
             Vehicle
         ).filter(
-            Vehicle.scenario == scenario
-        ).filter(
+            Vehicle.scenario == scenario,
             Vehicle.vehicle_type_id == vt.id
         ).count()
         vehicle_number_by_type.append((scenario.id, vt.name, vt_count))
     return vehicle_number_by_type
 
-### This function should be replaced by the "power_and_output" function from eFlips-eval, output
-"""Calculate the number of charging infrastructure and slots by type."""
+
+# This function may be replaced by the "power_and_output" function from eFlips-eval, output
+# Function to obtain the amount of charging stations and slots grouped by charging_type
 def get_charging_stations_and_slots_count(session, scenario):
-    #There are only depot or terminal stop (opportunity) charging stations
-    charging_types = ["DEPOT", "OPPORTUNITY"]
-    # Counting the charging stations and the charging slots for both types
-    charging_infra_by_type: list[tuple[int, str, int, int]] = []
-    for ct in charging_types:
-        # Counts charging stations by type
-        cs_count = session.query(
-            Station
-        ).filter(
-            Station.scenario_id == scenario.id
-        ).filter(
-            Station.charge_type == ct
-        ).count()
-        # Counts charging slots by station type
-        cslots = session.query(
-            Station
-        ).filter(
-            Station.scenario_id == scenario.id
-        ).filter(
-            Station.charge_type == ct
-        ).all()
-        # Counting the total slots by summing the amount_charging_places attribute
-        cslots_count = 0
-        for cs in cslots:
-            cslots_count += cs.amount_charging_places
-        charging_infra_by_type.append((scenario.id, ct, cs_count, cslots_count))
-    return charging_infra_by_type
+    # Getting the amount of chargers grouped by charging type (DEPOT or OPPORTUNITY).
+    result= session.query(
+        Station.scenario_id,
+        Station.charge_type,
+        func.count(Station.id),
+        func.sum(Station.amount_charging_places)
+    ).filter(
+        Station.scenario_id == scenario.id,
+        Station.amount_charging_places.isnot(None),
+        Station.charge_type.isnot(None)
+    ).group_by(
+        Station.charge_type,
+        Station.scenario_id
+    ).all()
+    # The result is written in a list which can be used by the make_parameter_list function.
+    chargers: list[tuple[int, str, int]]= []
+    for i in result:
+        chargers.append((i[0], i[1]+" Station", i[2]))
+        chargers.append((i[0], i[1]+" Slot", i[3]))
+    return chargers
+
 
 """ Get the total fuel (Energy) consumption from the database. As the scenario only simulates a time period 
 of 7 days, the energy consumption must be multiplied. """
 def get_total_energy_consumption(session, scenario):
-    # obtain the energy consumption as the difference in state of charge before and after the charging events
+    # obtain the energy consumption as the difference in state of charge before and after the charging events.
+    # This difference ist the multiplied by the battery capacity and divided by the charging efficiency
+    # to account for the Energy lost during charging.
     result = session.query(
-        func.sum(Event.soc_start - Event.soc_end),
-        VehicleType.battery_capacity
+        func.sum((Event.soc_end - Event.soc_start) * VehicleType.battery_capacity/VehicleType.charging_efficiency)
     ).select_from(
         Event
     ).join(
         VehicleType, Event.vehicle_type_id == VehicleType.id
     ).filter(
-        Event.event_type != 'CHARGING_DEPOT'
-    ).filter(
+        or_(Event.event_type == 'CHARGING_DEPOT',
+            Event.event_type == 'CHARGING_OPPORTUNITY'),
         Event.scenario_id == scenario.id
-    ).group_by(VehicleType.battery_capacity).all()
+    ).one()
     # Calculate the annual energy consumption
-    energy_consumption = sum(t[0]*t[1] for t in result)*functions.sim_period_to_year(session = session, scenario = scenario)
+    energy_consumption = result[0] * functions.sim_period_to_year(session=session, scenario=scenario)
     return (scenario.id, energy_consumption)
 
-"""Get the fleet mileage by vehicle type """
+
+"""Get the fleet mileage by vehicle type in km."""
 def get_fleet_mileage_by_vehicle_type(session, scenario):
     result = session.query(
         scenario.id,
@@ -98,6 +94,7 @@ def get_fleet_mileage_by_vehicle_type(session, scenario):
         annual_mileage_by_vtype.append((result[i][0], result[i][1], result[i][2]*functions.sim_period_to_year(session, scenario)/1000))
     return annual_mileage_by_vtype
 
+
 """ Calculates the total fleet mileage not grouped by vehicle type"""
 def total_fleet_mileage(session, scenario):
     mileage_by_vtype = get_fleet_mileage_by_vehicle_type(session, scenario)
@@ -105,17 +102,18 @@ def total_fleet_mileage(session, scenario):
     total_mileage = sum([t[2] for t in mileage_by_vtype])
     return (scenario.id, total_mileage)
 
+
 """ Calculate the driver hours  """
 def get_driver_hours(session, scenario):
     result = session.query(
         func.sum(Event.time_end - Event.time_start)
     ).filter(
-        Event.scenario_id == scenario.id
-    ).filter(
+        Event.scenario_id == scenario.id,
         or_(Event.event_type == 'DRIVING', Event.event_type == 'DRIVING')
     ).one()
     # Annual driver hours are calculated
     driver_hours = functions.sim_period_to_year(session = session, scenario = scenario)* result[0].total_seconds() / 3600
+    print(driver_hours)
     return(scenario.id, driver_hours)
 
 
@@ -129,6 +127,7 @@ def get_simulation_period(session, scenario):
     Event.scenario_id == scenario.id
     ).one()
     return result[1]-result[0]
+
 
 """ This is a method, which returns the battery size by vehicle type. """
 def get_battery_size(session, scenario):
