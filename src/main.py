@@ -54,10 +54,10 @@ if __name__ == "__main__":
     # List with the number of charging infrastructure by type which should be replaced by a "get_data" function,
     # which counts the charging infrastructure.
     charging_stations_by_type = [
-        (SCENARIO_ID, "OC-station", 3),
-        (SCENARIO_ID, "OC-slot", 15),
-        (SCENARIO_ID, "DC-station", 1),
-        (SCENARIO_ID, "DC-slot",8)
+        (SCENARIO_ID, "OPPORTUNITY Station", 3),# OPPORTUNITY charging station
+        (SCENARIO_ID, "OPPORTUNITY Slot", 15),  # OPPORTUNITY charging slot
+        (SCENARIO_ID, "DEPOT Station", 1), # DEPOT charging station
+        (SCENARIO_ID, "DEPOT Slot",8)  # DEPOT charging slot
     ]
 
     """ 

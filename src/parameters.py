@@ -27,10 +27,10 @@ Battery = [
     ("Alexander Dennis Enviro500EV", 350, 6, -0.03)
 ]
 Charging_Stations = [
-    ("OC-station", 500000, 20, 0.02),
-    ("OC-slot", 275000, 20, 0.02),
-    ("DC-station", 3400000, 20, 0.02),
-    ("DC-slot", 500000, 20, 0.02)
+    ("OPPORTUNITY Station", 500000, 20, 0.02), # OPPORTUNITY charging station
+    ("OPPORTUNITY Slot", 275000, 20, 0.02),  # OPPORTUNITY charging slot
+    ("DEPOT Station", 3400000, 20, 0.02), # DEPOT charging station
+    ("DEPOT Slot", 500000, 20, 0.02) # DEPOT charging slot
 ]
 """ 
 OPEX
