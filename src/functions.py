@@ -191,6 +191,7 @@ def make_parameter_list(list_from_db, asset_input_data,):
                   list_from_db[i][1])
     return assets
 
+# Alternative method which can be used to insert input parameters. It will most likely be discarded.
 def read_input_data(asset_list):
     x = input("Would you like to customize the input data? (y/n): ")
     if x == "y":
@@ -215,22 +216,27 @@ def read_input_data(asset_list):
 
 def read_csv(csvfile):
     """
-    This method reads the csv file for the input data and changes the parameters.
+    This method reads the csv file for the input data and changes the parameters in parameters.py to match the given
+    values from the CSV file. If some values are not given, the default values from parameters.py are used instead.
+
     :param csvfile: The CSV file which contains the input parameters.
     :return: None, this function purely changes the input parameters in parameters.py.
     """
     input_list = list(csv.reader(csvfile, delimiter=';'))
     # Read the data for vehicle type and infrastructure type
     for i in range(len(input_list)):
+        # Create lists in the format of the tuples in parameters.Vehicles, parameters.Batteries and parameters.Charging_Stations
         vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"), cast_value(input_list[i][2], "int"), p.cef_vehicles]
         battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"), cast_value(input_list[i][5], "int"), p.cef_battery]
         infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"), cast_value(input_list[i][8], "int"), p.cef_infra]
 
+        # Create lists with the names of vehicles, batteries and charging infrastructure in order to check, whether the
+        # new entry needs to be appended to the list or a default value needs to be replaced
         vehicle_names = [x[0] for x in p.Vehicles]
         battery_names = [x[0] for x in p.Battery]
         infra_names = [x[0] for x in p.Charging_Stations]
 
-        # Append new vehicle types (including battery) to the list and replace the values if this type is already in the list
+        # Append new vehicle types (including battery) to the list or replace the values if this type is already in the list.
         if vehicle[0] in vehicle_names:
             if battery[0] not in battery_names:
                 print("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
@@ -239,6 +245,7 @@ def read_csv(csvfile):
             idx_battery = battery_names.index(battery[0])
             p.Battery[idx_battery] = tuple(battery)
         else:
+            # If the entry of the list is empty it is not considered
             if None in vehicle:
                 pass
             else:
@@ -276,6 +283,13 @@ def read_csv(csvfile):
     print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
 
 def cast_value(value, datatype):
+    """
+    This method casts the given value to the given datatype. If the cast is not possible due to a ValueError, None is returned.
+
+    :param value: The value to cast.
+    :param datatype: The datatype which the value should be casted to.
+    :return: The casted value.
+    """
     if datatype == "int":
         try:
             value = int(value)

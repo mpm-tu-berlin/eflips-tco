@@ -16,10 +16,11 @@ import parameters as p
 import functions as f
 import get_data as gd
 
+# Environment variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
 #DATABASE_URL = 'postgresql://julian:password@localhost/eflips_tco'
-
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
+INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
 
 if __name__ == "__main__":
 
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     ]
 
     #-----------read the input data from a .csv file-----------#
-    with open('input_tco.csv', newline="") as csvfile:
+    with open(INPUT_FILE, newline="") as csvfile:
         f.read_csv(csvfile)
 
 
@@ -145,7 +146,7 @@ if __name__ == "__main__":
     # Specific TCO over project duration
     tco_sp_pd = tco_pd/(fleet_mileage*p.project_duration)
 
-    # Print the results on the console.
+    # Print the results on the console if wanted.
     #print('The total cost of ownership over the project duration'
     #      ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
     #print('Annual total cost of ownership over the project duration'

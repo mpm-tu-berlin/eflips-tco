@@ -9,6 +9,12 @@ import functions
 
 """ Calculating the number of vehicles per vehicle type."""
 def get_vehicle_count_by_type(session, scenario):
+    """
+    This method gets the number of vehicles sorted by the vehicle type from the session provided.
+    :param session: A session object.
+    :param scenario: A scenario object.
+    :return: A list of tuples including the scenario id of the calculated scenario, the name of the vehicle type and the number of vehicles of the respective vehicle type.
+    """
     # Gets the vehicle types used in the current scenario
     vehicle_types = scenario.vehicle_types
     """ Create empty list in which the number and type of buses are listed."""
@@ -53,6 +59,13 @@ def get_charging_stations_and_slots_count(session, scenario):
 """ Get the total fuel (Energy) consumption from the database. As the scenario only simulates a time period 
 of 7 days, the energy consumption must be multiplied. """
 def get_total_energy_consumption(session, scenario):
+    """
+    This method gets the total energy consumption for the given scenario from the session provided.
+    :param session: A session object.
+    :param scenario: A scenario object.
+    :return: A tuple including the scenario id and the total energy consumption in kWh.
+    """
+
     # obtain the energy consumption as the difference in state of charge before and after the charging events.
     # This difference ist the multiplied by the battery capacity and divided by the charging efficiency
     # to account for the Energy lost during charging.
@@ -74,6 +87,12 @@ def get_total_energy_consumption(session, scenario):
 
 """Get the fleet mileage by vehicle type in km."""
 def get_fleet_mileage_by_vehicle_type(session, scenario):
+    """
+    This method gets the annual fleet mileage sorted by vehicle type from the session provided.
+    :param session: A session object.
+    :param scenario: A scenario object.
+    :return: A list of tuples including the scenario id, the name of the respective vehicle type and the total fleet mileage of the respective vehicle type in km.
+    """
     result = session.query(
         scenario.id,
         VehicleType.name,
