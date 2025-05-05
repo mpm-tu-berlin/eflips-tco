@@ -4,7 +4,12 @@ they should be put in by feeding a list into the program.
 """
 
 """ project duration in years """
-project_duration = 20
+project_duration = 12
+
+# Some cost escalation factors.
+cef_vehicles = 0.025
+cef_battery = -0.03
+cef_infra = 0.02
 
 """
 CAPEX
@@ -16,21 +21,22 @@ inflation_rate = 0.025
 
 # asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation)
 Vehicles = [
-    ("Ebusco 3.0 12", 370000, 12, 0.025),
-    ("Solaris Urbino 18", 603000, 12, 0.025),
-    ("Alexander Dennis Enviro500EV", 700000, 12, 0.025)
+    ("Ebusco 3.0 12", 370000.0, 12, cef_vehicles),
+    ("Solaris Urbino 18", 603000.0, 12, cef_vehicles),
+    ("Alexander Dennis Enviro500EV", 700000.0, 12, cef_vehicles)
 ]
+
 # procurement cost per kWh
 Battery = [
-    ("Ebusco 3.0 12", 350, 6, -0.03),
-    ("Solaris Urbino 18",  350, 6, -0.03),
-    ("Alexander Dennis Enviro500EV", 350, 6, -0.03)
+    ("Ebusco 3.0 12", 350, 6, cef_battery),
+    ("Solaris Urbino 18",  350, 6, cef_battery),
+    ("Alexander Dennis Enviro500EV", 350, 6, cef_battery)
 ]
 Charging_Stations = [
-    ("OPPORTUNITY Station", 500000, 20, 0.02), # OPPORTUNITY charging station
-    ("OPPORTUNITY Slot", 275000, 20, 0.02),  # OPPORTUNITY charging slot
-    ("DEPOT Station", 3400000, 20, 0.02), # DEPOT charging station
-    ("DEPOT Slot", 500000, 20, 0.02) # DEPOT charging slot
+    ("OPPORTUNITY Station", 500000, 20, cef_infra), # OPPORTUNITY charging station
+    ("OPPORTUNITY Slot", 275000, 20, cef_infra),  # OPPORTUNITY charging slot
+    ("DEPOT Station", 3400000, 20, cef_infra), # DEPOT charging station
+    ("DEPOT Slot", 100000, 20, cef_infra) # DEPOT charging slot
 ]
 """ 
 OPEX

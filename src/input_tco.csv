@@ -1,0 +1,6 @@
+vehicle_name;vehicle_procurement_cost;vehicle_useful_life;vehicle_battery_name;battery_procurement;battery_useful_life;infrastructure_name;infratructure_procurement_cost;infrastructure_useful_life;project_duration;discount_rate;interest_rate;staff_cost;fuel_cost;maint_cost_vehicles;maint_cost_infrastructure;taxes;insurance;use_cost_escalation
+Ebusco 3.0 12;370000;12;Ebusco 3.0 12;350;6;OPPORTUNITY Station;500000;20;20;0.025;0.04;21.875;0.175;0.35;1000;400.5;300;TRUE
+Solaris Urbino 18;603000;12;Solaris Urbino 18;350;6;OPPORTUNITY Slot;275000;20;;;;;;;;;;
+Alexander Dennis Enviro500EV;700000;12;Alexander Dennis Enviro500EV;350;6;DEPOT Station;3400000;20;;;;;;;;;;
+Add more buses here;;;;;;DEPOT Slot;100000;20;;;;;;;;;;
+;;;;;;Add more infrastructure here;;;;;;;;;;;;

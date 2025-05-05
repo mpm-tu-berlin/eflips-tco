@@ -1,6 +1,9 @@
 import numpy as np
-
+import csv
 import get_data
+import parameters as p
+from parameters import inflation_rate, insurance
+
 
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate = 0.02):
     """
@@ -65,14 +68,15 @@ def replacement_cost(base_price, cost_escalation, useful_life, project_duration)
     for i in range(number_of_full_replacements+1):
         # The new price is the baseprice multiplied by the cost escalation factor to the power of the years after the base year.
         new_price = base_price * (1 + cost_escalation) ** (i * useful_life)
-        # If the project ends before the useful life if the next replacement, the binary variable is set true in order to account for that later.
+        # If the project ends before the useful life if the next replacement, the binary variable is set true in order
+        # to account for that in the total_proc_cef function.
         if (i+1)*useful_life < project_duration:
             replacement.append((new_price, (i*useful_life), False))
         elif (i+1)*useful_life == project_duration:
             replacement.append((new_price, (i * useful_life), False))
             break
         else:
-            # The useful
+            # The useful life is shorter than the remaining project duration
             replacement.append((new_price, (i*useful_life), True))
             break
     return replacement
@@ -80,7 +84,9 @@ def replacement_cost(base_price, cost_escalation, useful_life, project_duration)
 
 def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: int, cost_escalation: float, interest_rate = 0.04, net_discount_rate = 0.02):
     """
-    This method calculates the procurement cost of an asset over its lifetime while also accounting for partial consideration.
+    This method calculates the procurement cost of an asset over its lifetime while also accounting for partial consideration
+    of the procurement cost in case the project duration is not an integer multiple of the useful life of the considered asset.
+    This is done according to the reviewed literature by scaling down the present value of the last replacement.
 
     :param procurement_cost: The procurement cost of the respective asset of which the annuty should be calculated.
     :param useful_life: The useful life of the respective asset, which is also the time over which the asset is financed.
@@ -94,21 +100,35 @@ def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: 
     all_procurements = replacement_cost(procurement_cost, cost_escalation, useful_life, project_duration)
     # List with all annuities
     annuities: list[float] = []
-    annuities_pv = np.zeros(project_duration)
+    annuities_pv: list[float] = []
+    # Includes the scaled down present value of the last replacement in case the useful life is larger than the
+    # remaining project duration.
+    scaled_down_CF = 0
     # Calculating all annuities over the project duration and saving them in a list
     for i in range(len(all_procurements)):
         annuity_this = annuity(all_procurements[i][0], useful_life, interest_rate)
         if all_procurements[i][2]:
-            # Only the annuities within the project duration are considered
-            for j in range(project_duration-all_procurements[i][1]):
-                annuities.append(annuity_this)
+            # As the approach of scaling down the cashflows is selected here, the present value of the last replacement
+            # is calculated and then multiplied by a factor resulting from the remaining project duration and the
+            # useful life of the respective asset.
+            # A new list is used in order to calculate the present value of the last replacement.
+            annuities_last_replacement = []
+            # Filling the list with all annuities over the useful life of the asset.
+            for j in range(useful_life):
+                annuities_last_replacement.append(annuity_this)
+            # The present value of the annuities is calculated and then scaled down.
+            scaled_down_CF = (sum(net_present_value(annuities_last_replacement[x], x, net_discount_rate)[0]
+                                  for x in range(len(annuities_last_replacement))) * (project_duration - all_procurements[i][1]) / useful_life)
+            # The scaled down cashflow is then appended to the list of annuities, so the present value at
+            # the time of the base year can be calculated along with the other annuities.
+            annuities.append(scaled_down_CF)
         else:
-            #For every year the respective annuity is appended to the list
+            #For every year the respective annuity is appended to the list.
             for j in range(useful_life):
                 annuities.append(annuity_this)
-    # The present value of the annuities is calculated
-    for i in range(project_duration):
-        annuities_pv[i] = net_present_value(annuities[i], i, net_discount_rate)[0]
+    # The present value of all cashflows at the base year is calculated.
+    for i in range(len(annuities)):
+        annuities_pv.append(net_present_value(annuities[i], i, net_discount_rate)[0])
     # The total procurement cost is returned which is the sum of the annuities adjusted for inflation / discount rate.
     return sum(annuities_pv)
 
@@ -149,7 +169,7 @@ def make_parameter_list(list_from_db, asset_input_data,):
     This method makes a list of the required parameters using for a certain asset. This enables the program to calculate
     the TCO of scenarios with a variety of different vehicle types. The method matches the asset type obtained from eFLIPS
     with the respective item of the list in parameter.py. The matching is done based on the name of the assets.
-    :param list_from_db: A list with input parameters obtained from eFLIPS. The structure mus be as such: list[tuples[scenario.id, asset_type.name, asset_type.count]
+    :param list_from_db: A list with input parameters obtained from eFLIPS. The structure must be as such: list[tuples[scenario.id, asset_type.name, asset_type.count]
     :param asset_input_data: A lsit containing the financial input data of the asset. (asset_name, asset_cost, asset_useful_life, asset_cost_escalation).
     :return: A list if the assets including all necessary information to calculate the TCO.
     """
@@ -170,3 +190,101 @@ def make_parameter_list(list_from_db, asset_input_data,):
             print("Please check the input data and add all parameters. You need to add missing parameters for the asset:",
                   list_from_db[i][1])
     return assets
+
+def read_input_data(asset_list):
+    x = input("Would you like to customize the input data? (y/n): ")
+    if x == "y":
+        print("Please insert the data for the assets. You can use the default value by clicking enter and skip and use the default value by typing n.")
+        for i in range(len(asset_list)):
+            print("Asset"+asset_list[i][0]+": ")
+            input_string = ["Procurement cost", "Useful life"]
+            for j in range(len(input_string)):
+                input_ = input(input_string[j]+":")
+                if input_ == "":
+                    print("The default value is used.")
+                elif input_ == "n":
+                    break
+                else:
+                    asset = list(asset_list[i])
+                    if input_string[j] == "Procurement cost":
+                        asset[j+1] = float(input_)
+                    else:
+                        asset[j+1] = int(input_)
+                    asset_list[i] = tuple(asset)
+    return asset_list
+
+def read_csv(csvfile):
+    """
+    This method reads the csv file for the input data and changes the parameters.
+    :param csvfile: The CSV file which contains the input parameters.
+    :return: None, this function purely changes the input parameters in parameters.py.
+    """
+    input_list = list(csv.reader(csvfile, delimiter=';'))
+    # Read the data for vehicle type and infrastructure type
+    for i in range(len(input_list)):
+        vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"), cast_value(input_list[i][2], "int"), p.cef_vehicles]
+        battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"), cast_value(input_list[i][5], "int"), p.cef_battery]
+        infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"), cast_value(input_list[i][8], "int"), p.cef_infra]
+
+        vehicle_names = [x[0] for x in p.Vehicles]
+        battery_names = [x[0] for x in p.Battery]
+        infra_names = [x[0] for x in p.Charging_Stations]
+
+        # Append new vehicle types (including battery) to the list and replace the values if this type is already in the list
+        if vehicle[0] in vehicle_names:
+            if battery[0] not in battery_names:
+                print("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
+            idx = vehicle_names.index(vehicle[0])
+            p.Vehicles[idx] = tuple(vehicle)
+            idx_battery = battery_names.index(battery[0])
+            p.Battery[idx_battery] = tuple(battery)
+        else:
+            if None in vehicle:
+                pass
+            else:
+                p.Vehicles.append(tuple(vehicle))
+                p.Battery.append(tuple(battery))
+
+        # Append new infrastructure types to the list and replace the values if this type is already in the list
+        if infra[0] in infra_names:
+            idx = infra_names.index(infra[0])
+            p.Charging_Stations[idx] = infra
+        else:
+            if None in infra:
+                pass
+            else:
+                p.Charging_Stations.append(infra)
+
+    # Replace the other parameters if necessary or use the default values in case there is no data provided.
+    p.project_duration = cast_value(input_list[1][9], "int") if cast_value(input_list[1][9], "int") is not None else p.project_duration
+    p.inflation_rate = cast_value(input_list[1][10], "float") if cast_value(input_list[1][10], "float") is not None else p.inflation_rate
+    p.interest_rate = cast_value(input_list[1][11], "float") if cast_value(input_list[1][11], "float") is not None else p.interest_rate
+    p.staff_cost = cast_value(input_list[1][12], "float") if cast_value(input_list[1][12], "float") is not None else p.staff_cost
+    p.fuel_cost = cast_value(input_list[1][13], "float") if cast_value(input_list[1][13], "float") is not None else p.fuel_cost
+    p.maint_cost = cast_value(input_list[1][14], "float") if cast_value(input_list[1][14], "float") is not None else p.maint_cost
+    p.maint_infr_cost = cast_value(input_list[1][15], "float") if cast_value(input_list[1][15], "float") is not None else p.maint_infr_cost
+    p.taxes = cast_value(input_list[1][16], "float") if cast_value(input_list[1][16], "float") is not None else p.taxes
+    p.insurance = cast_value(input_list[1][17], "float") if cast_value(input_list[1][17], "float") is not None else p.insurance
+
+    # Decide whether cost escalation is considered or not. The default procedure is to consider cost escalation.
+    if input_list[0][17] == "" or input_list[1][18] == "TRUE":
+        pass
+    else:
+        p.pef_fuel = p.pef_wages = p.pef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
+
+    # Print a message for the user
+    print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
+
+def cast_value(value, datatype):
+    if datatype == "int":
+        try:
+            value = int(value)
+        except ValueError:
+            value = None
+    if datatype == "float":
+        try:
+            value = float(value)
+        except ValueError:
+            value = None
+    return value
+

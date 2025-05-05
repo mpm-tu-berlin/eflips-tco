@@ -96,7 +96,7 @@ def get_fleet_mileage_by_vehicle_type(session, scenario):
 
 
 """ Calculates the total fleet mileage not grouped by vehicle type"""
-def total_fleet_mileage(session, scenario):
+def get_total_fleet_mileage(session, scenario):
     mileage_by_vtype = get_fleet_mileage_by_vehicle_type(session, scenario)
     # Next, the total fleet mileage over the simulation period is calculated
     total_mileage = sum([t[2] for t in mileage_by_vtype])
@@ -113,7 +113,6 @@ def get_driver_hours(session, scenario):
     ).one()
     # Annual driver hours are calculated
     driver_hours = functions.sim_period_to_year(session = session, scenario = scenario)* result[0].total_seconds() / 3600
-    print(driver_hours)
     return(scenario.id, driver_hours)
 
 
