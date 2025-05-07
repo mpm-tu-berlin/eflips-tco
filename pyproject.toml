@@ -1,0 +1,28 @@
+[project]
+name = "tco-calculation"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10, <3.14"
+dependencies = [
+    "pytest (>=8.3.5,<9.0.0)",
+    "eflips-eval (>=1.7.2,<2.0.0)",
+    "eflips-model @ git+https://github.com/mpm-tu-berlin/eflips-model.git@feature/TCO"
+
+]
+
+package-mode = false
+
+[tool.poetry]
+
+
+
+[tool.poetry.group.dev.dependencies]
+eflips-model = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
