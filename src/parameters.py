@@ -26,18 +26,41 @@ Vehicles = [
     ("Alexander Dennis Enviro500EV", 700000.0, 12, cef_vehicles)
 ]
 
+def vehicle_dict():
+    Vehicle_dict = {
+        name: {"procurement_cost": proc, "useful_life": uf, "cost_escalation": cef}
+        for name, proc, uf, cef in Vehicles
+    }
+    return Vehicle_dict
+
 # procurement cost per kWh
 Battery = [
     ("Ebusco 3.0 12", 350, 6, cef_battery),
     ("Solaris Urbino 18",  350, 6, cef_battery),
     ("Alexander Dennis Enviro500EV", 350, 6, cef_battery)
 ]
+
+def battery_dict():
+    Battery_dict = {
+        name: {"procurement_cost": proc, "useful_life": uf, "cost_escalation": cef}
+        for name, proc, uf, cef in Battery
+    }
+    return Battery_dict
+
 Charging_Stations = [
     ("OPPORTUNITY Station", 500000, 20, cef_infra), # OPPORTUNITY charging station
-    ("OPPORTUNITY Slot", 275000, 20, cef_infra),  # OPPORTUNITY charging slot
+    ("300 kw_Slot", 275000, 20, cef_infra),  # OPPORTUNITY charging slot
     ("DEPOT Station", 3400000, 20, cef_infra), # DEPOT charging station
-    ("DEPOT Slot", 100000, 20, cef_infra) # DEPOT charging slot
+    ("120 kw_Slot", 100000, 20, cef_infra) # DEPOT charging slot
 ]
+
+def charging_stations_dict():
+    Charging_Stations_dict = {
+        name: {"procurement_cost": proc, "useful_life": uf, "cost_escalation": cef}
+        for name, proc, uf, cef in Charging_Stations
+    }
+    return Charging_Stations_dict
+
 """ 
 OPEX
 """

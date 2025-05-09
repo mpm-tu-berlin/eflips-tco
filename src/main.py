@@ -6,15 +6,19 @@ running this, the essential functionality of the project should be executed.
 """
 #from numpy.lib.tests.test_format import endian
 from sqlalchemy.orm import Session
-from eflips.model import Scenario
+from eflips.model import Scenario, Area
+from eflips.eval.output.prepare import power_and_occupancy
 from sqlalchemy import create_engine#, func
+
 
 import os
 import json
+import importlib
 
 import parameters as p
 import functions as f
 import get_data as gd
+import init_database as db
 
 # Environment variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -22,19 +26,38 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
 INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
 
+# unzstd --long=31 results_for_tco.sql.zst --stdout | psql eflips_tco um DB neu zu laden. Erst alle Tabellen außer spatial_ref_sys auswählen und löschen (mit entf)!
+
+
 if __name__ == "__main__":
 
+    #-----------read the input data from a .csv file-----------#
+    with open(INPUT_FILE, newline="") as csvfile:
+        f.read_csv(csvfile)
+
+    #----------import all needed data from the database----------#
     engine = create_engine(DATABASE_URL, echo=False)
     with Session(engine) as session:
 
         """Every scenario is calculated"""
         scenario = session.query(Scenario).filter(Scenario.id == SCENARIO_ID).scalar()
 
+        db.init_database(session, scenario)
+
+        # TODO remove later
+
+        #example_area = session.query(Area).filter(Area.id == 28).first()
+        #print(example_area.id)
+
+        # df = power_and_occupancy(area_id=example_area.id, session=session)
+
+
+
         """ Calculating the number of vehicles used in the simulation by vehicle type."""
         vehicle_count_by_type = gd.get_vehicle_count_by_type(session, scenario)
 
         """Calculate the number of charging infrastructure and slots by type. There are only depot or terminal stop (opportunity) charging stations"""
-        charging_stations_by_type =gd.get_charging_stations_and_slots_count(session, scenario)
+        #charging_stations_by_type =gd.get_charging_stations_and_slots_count(session, scenario)
 
         " Get the total fuel (Energy) consumption from the database"
         total_energy_consumption = gd.get_total_energy_consumption(session, scenario)
@@ -58,14 +81,14 @@ if __name__ == "__main__":
     # This should be removed, if the database includes charging infrastructure
     charging_stations_by_type = [
         (SCENARIO_ID, "OPPORTUNITY Station", 3),# OPPORTUNITY charging station
-        (SCENARIO_ID, "OPPORTUNITY Slot", 15),  # OPPORTUNITY charging slot
+        (SCENARIO_ID, "300 kw_Slot", 15),  # OPPORTUNITY charging slot
         (SCENARIO_ID, "DEPOT Station", 1), # DEPOT charging station
-        (SCENARIO_ID, "DEPOT Slot",8)  # DEPOT charging slot
+        (SCENARIO_ID, "120 kw_Slot",8)  # DEPOT charging slot
     ]
 
     #-----------read the input data from a .csv file-----------#
-    with open(INPUT_FILE, newline="") as csvfile:
-        f.read_csv(csvfile)
+    #with open(INPUT_FILE, newline="") as csvfile:
+    #    f.read_csv(csvfile)
 
 
     """ 
@@ -147,15 +170,15 @@ if __name__ == "__main__":
     tco_sp_pd = tco_pd/(fleet_mileage*p.project_duration)
 
     # Print the results on the console if wanted.
-    #print('The total cost of ownership over the project duration'
-    #      ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
-    #print('Annual total cost of ownership over the project duration'
-    #      ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, tco_ann))
-    #print('The specific total cost of ownership over the project duration'
-    #      ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, tco_sp_pd))
-    #print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
-    #      'consumption of {} kWh/km.'.format(fleet_mileage, (total_number_vehicles),
-    #                                             (round(total_energy_consumption[1] / total_fleet_mileage[1],2))))
+    print('The total cost of ownership over the project duration'
+          ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
+    print('Annual total cost of ownership over the project duration'
+          ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, tco_ann))
+    print('The specific total cost of ownership over the project duration'
+          ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, tco_sp_pd))
+    print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
+          'consumption of {} kWh/km.'.format(fleet_mileage, (total_number_vehicles),
+                                                 (round(total_energy_consumption[1] / total_fleet_mileage[1],2))))
 
     #-----------Save the output to a JSON file-----------#
     vehicle_input = []
