@@ -133,12 +133,6 @@
             },
             {
                 "name": "120 kw_Slot",
-                "procurement_cost": 100000,
-                "useful_life": 20,
-                "cost_escalation": 0.02
-            },
-            {
-                "name": "120 kw_Slot Slot",
                 "procurement_cost": 100000.0,
                 "useful_life": 20,
                 "cost_escalation": 0.02
@@ -194,25 +188,30 @@
         ]
     },
     "Results": {
-        "Number_of_buses": 1222,
+        "Number_of_vehicles": 1222,
+        "Number of charging slots": {
+            "120 kw_Slot": 1199,
+            "300 kw_Slot": 171,
+            "Total": 1370
+        },
         "Total_annual_driver_hours": [
-            1701032.9888654433,
+            1829909.1044312343,
             "h p.a."
         ],
         "Total_annual_fleet_mileage": [
-            32704808.216321,
+            32704808.216320995,
             "km p.a."
         ],
         "Total_TCO_over_pd": [
-            2834990911.89,
+            3147149200.44,
             "EUR"
         ],
         "Annual_TCO": [
-            141749545.59,
+            157357460.02,
             "EUR p.a."
         ],
         "Specific_TCO": [
-            4.33,
+            4.81,
             "EUR/km"
         ]
     }
