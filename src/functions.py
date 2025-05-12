@@ -2,7 +2,7 @@ import numpy as np
 import csv
 import get_data
 import parameters as p
-from parameters import inflation_rate, insurance
+import warnings as w
 
 
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate = 0.02):
@@ -29,14 +29,6 @@ def annuity(procurement_cost: float, useful_life: int, interest_rate = 0.04):
     """
     ann = procurement_cost*interest_rate / (1-(1+interest_rate)**(-useful_life))
     return round(ann, 2)
-
-""" This method is used to calculate the total procurement cost of a single asset taking the annuities and the inflation into account. """
-def total_proc(procurement_cost: float, useful_life: int, project_duration: int, interest_rate = 0.01, net_discount_rate = 0.02):
-    annuities = np.zeros(useful_life)
-    annuity_this_component = annuity(procurement_cost, useful_life, interest_rate)
-    for i in range(useful_life):
-        annuities[i] = net_present_value(annuity_this_component, i, net_discount_rate)[0]
-    return sum(annuities)*project_duration/useful_life #hier wird noch keine wiederbeschaffung mit entsprechenden preissteigerungsfaktoren berücksichtigt.
 
 
 def future_cost(cef, base_price, years_after_base_year):
@@ -82,7 +74,8 @@ def replacement_cost(base_price, cost_escalation, useful_life, project_duration)
     return replacement
 
 
-def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: int, cost_escalation: float, interest_rate = 0.04, net_discount_rate = 0.02):
+def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: int, cost_escalation: float,
+                   interest_rate = 0.04, net_discount_rate = 0.02):
     """
     This method calculates the procurement cost of an asset over its lifetime while also accounting for partial consideration
     of the procurement cost in case the project duration is not an integer multiple of the useful life of the considered asset.
@@ -147,7 +140,7 @@ def sim_period_to_year(session, scenario, sim_period = None):
         sim_period = get_data.get_simulation_period(session, scenario).total_seconds()/86400
     return 365.25/sim_period
 
-
+# TODO check the calculation of the staff cost as this function is not yet considered!
 def calculate_total_staff_cost(driver_hours, annual_driver_cost, annual_hours_per_driver = 1600, buffer = 0.1):
     """
     This method calculates the total staff cost based on the number of drivers required for the operation of the buses.
@@ -164,56 +157,7 @@ def calculate_total_staff_cost(driver_hours, annual_driver_cost, annual_hours_pe
     number_drivers = driver_hours*(1+buffer)%annual_hours_per_driver
     return (number_drivers, annual_driver_cost*number_drivers)
 
-def make_parameter_list(list_from_db, asset_input_data,):
-    """
-    This method makes a list of the required parameters using for a certain asset. This enables the program to calculate
-    the TCO of scenarios with a variety of different vehicle types. The method matches the asset type obtained from eFLIPS
-    with the respective item of the list in parameter.py. The matching is done based on the name of the assets.
-    :param list_from_db: A list with input parameters obtained from eFLIPS. The structure must be as such: list[tuples[scenario.id, asset_type.name, asset_type.count]
-    :param asset_input_data: A lsit containing the financial input data of the asset. (asset_name, asset_cost, asset_useful_life, asset_cost_escalation).
-    :return: A list if the assets including all necessary information to calculate the TCO.
-    """
-    # In order to calculate the TCO, a list with tuples is created. The tuples contain the name, the number, the
-    # procurement cost, the useful life and the cost escalation.
-    assets: list[tuple[str, int, float, int, float]] = []
-    for i in range(len(list_from_db)):
-        # Finding the right procurement cost, useful life and costescalation from the asset input data list.
-        procurement = useful_life = CEFs = None
-        for j in range(len(asset_input_data)):
-            if list_from_db[i][1] == asset_input_data[j][0]:
-                procurement = asset_input_data[j][1]
-                useful_life = asset_input_data[j][2]
-                CEFs = asset_input_data[j][3]
-        assets.append((list_from_db[i][1], list_from_db[i][2], procurement, useful_life, CEFs))
-        # Test whether all required buses have been put in by the user.
-        if None in assets[i]:
-            print("Please check the input data and add all parameters. You need to add missing parameters for the asset:",
-                  list_from_db[i][1])
-    return assets
-
-# Alternative method which can be used to insert input parameters. It will most likely be discarded.
-def read_input_data(asset_list):
-    x = input("Would you like to customize the input data? (y/n): ")
-    if x == "y":
-        print("Please insert the data for the assets. You can use the default value by clicking enter and skip and use the default value by typing n.")
-        for i in range(len(asset_list)):
-            print("Asset"+asset_list[i][0]+": ")
-            input_string = ["Procurement cost", "Useful life"]
-            for j in range(len(input_string)):
-                input_ = input(input_string[j]+":")
-                if input_ == "":
-                    print("The default value is used.")
-                elif input_ == "n":
-                    break
-                else:
-                    asset = list(asset_list[i])
-                    if input_string[j] == "Procurement cost":
-                        asset[j+1] = float(input_)
-                    else:
-                        asset[j+1] = int(input_)
-                    asset_list[i] = tuple(asset)
-    return asset_list
-
+# get the input data from the input CSV file.
 def read_csv(csvfile):
     """
     This method reads the csv file for the input data and changes the parameters in parameters.py to match the given
@@ -226,9 +170,12 @@ def read_csv(csvfile):
     # Read the data for vehicle type and infrastructure type
     for i in range(len(input_list)):
         # Create lists in the format of the tuples in parameters.Vehicles, parameters.Batteries and parameters.Charging_Stations
-        vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"), cast_value(input_list[i][2], "int"), p.cef_vehicles]
-        battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"), cast_value(input_list[i][5], "int"), p.cef_battery]
-        infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"), cast_value(input_list[i][8], "int"), p.cef_infra]
+        vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"),
+                   cast_value(input_list[i][2], "int"), p.cef_vehicles]
+        battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"),
+                   cast_value(input_list[i][5], "int"), p.cef_battery]
+        infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"),
+                 cast_value(input_list[i][8], "int"), p.cef_infra]
 
         # Create lists with the names of vehicles, batteries and charging infrastructure in order to check, whether the
         # new entry needs to be appended to the list or a default value needs to be replaced
@@ -238,8 +185,8 @@ def read_csv(csvfile):
 
         # Append new vehicle types (including battery) to the list or replace the values if this type is already in the list.
         if vehicle[0] in vehicle_names:
-            if battery[0] not in battery_names:
-                print("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
+            if vehicle[0] not in battery_names:
+                raise ValueError("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
             idx = vehicle_names.index(vehicle[0])
             p.Vehicles[idx] = tuple(vehicle)
             idx_battery = battery_names.index(battery[0])
@@ -263,15 +210,15 @@ def read_csv(csvfile):
                 p.Charging_Stations.append(infra)
 
     # Replace the other parameters if necessary or use the default values in case there is no data provided.
-    p.project_duration = cast_value(input_list[1][9], "int") if cast_value(input_list[1][9], "int") is not None else p.project_duration
-    p.inflation_rate = cast_value(input_list[1][10], "float") if cast_value(input_list[1][10], "float") is not None else p.inflation_rate
-    p.interest_rate = cast_value(input_list[1][11], "float") if cast_value(input_list[1][11], "float") is not None else p.interest_rate
-    p.staff_cost = cast_value(input_list[1][12], "float") if cast_value(input_list[1][12], "float") is not None else p.staff_cost
-    p.fuel_cost = cast_value(input_list[1][13], "float") if cast_value(input_list[1][13], "float") is not None else p.fuel_cost
-    p.maint_cost = cast_value(input_list[1][14], "float") if cast_value(input_list[1][14], "float") is not None else p.maint_cost
-    p.maint_infr_cost = cast_value(input_list[1][15], "float") if cast_value(input_list[1][15], "float") is not None else p.maint_infr_cost
-    p.taxes = cast_value(input_list[1][16], "float") if cast_value(input_list[1][16], "float") is not None else p.taxes
-    p.insurance = cast_value(input_list[1][17], "float") if cast_value(input_list[1][17], "float") is not None else p.insurance
+    p.project_duration = set_default_value(input_list[1][9], p.project_duration, "int", "project duration")
+    p.inflation_rate = set_default_value(input_list[1][10], p.inflation_rate, "float", "inflation rate")
+    p.interest_rate = set_default_value(input_list[1][11], p.interest_rate, "float", "interest rate")
+    p.staff_cost = set_default_value(input_list[1][12], p.staff_cost, "float", "staff cost")
+    p.fuel_cost = set_default_value(input_list[1][13], p.fuel_cost, "float", "fuel cost")
+    p.maint_cost = set_default_value(input_list[1][14], p.maint_cost, "float", "maintenance cost")
+    p.maint_infr_cost = set_default_value(input_list[1][15], p.maint_infr_cost, "float", "maintainance cost infrastructure")
+    p.taxes = set_default_value(input_list[1][16], p.taxes, "float", "taxes")
+    p.insurance = set_default_value(input_list[1][17], p.insurance, "float", "insurance")
 
     # Decide whether cost escalation is considered or not. The default procedure is to consider cost escalation.
     if input_list[0][17] == "" or input_list[1][18] == "TRUE":
@@ -282,9 +229,12 @@ def read_csv(csvfile):
     # Print a message for the user
     print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
 
+
+# Cast a value to the required datatype and return None in case of a ValueError
 def cast_value(value, datatype):
     """
     This method casts the given value to the given datatype. If the cast is not possible due to a ValueError, None is returned.
+    It is used in the read_csv method.
 
     :param value: The value to cast.
     :param datatype: The datatype which the value should be casted to.
@@ -301,4 +251,14 @@ def cast_value(value, datatype):
         except ValueError:
             value = None
     return value
+
+
+# Set the values in parameters.py to their default value and issue a warning in case there is no value provided.
+def set_default_value(input_value, default_value, data_type, parameter_type):
+    if cast_value(input_value, data_type) is None:
+        w.warn("There was no value provided for the parameter {}. The default value {} is used.".format(parameter_type, default_value))
+        return default_value
+    else:
+        return cast_value(input_value, data_type)
+
 
