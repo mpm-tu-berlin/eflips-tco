@@ -12,12 +12,19 @@ def init_database(session, scenario):
         VehicleType.scenario_id == scenario.id
     ).all()
     for vtype in all_vtypes:
-        tco_parameters = {
-            "name": vtype.name,
-            "procurement_cost": p.vehicle_dict().get(vtype.name, {}).get("procurement_cost"),
-            "useful_life": p.vehicle_dict().get(vtype.name, {}).get("useful_life"),
-            "cost_escalation": p.vehicle_dict().get(vtype.name, {}).get("cost_escalation")
-        }
+        if vtype.name in p.vehicle_dict():
+            tco_parameters = {
+                "name": vtype.name,
+                "procurement_cost": p.vehicle_dict().get(vtype.name, {}).get("procurement_cost"),
+                "useful_life": p.vehicle_dict().get(vtype.name, {}).get("useful_life"),
+                "cost_escalation": p.vehicle_dict().get(vtype.name, {}).get("cost_escalation")
+            }
+        else:
+            raise ValueError(
+                "Please check your input data and add the missing parameters for this vehicle: "+vtype.name+
+                ". \n Please also make sure that the spelling of the vehicle type in your input file is correct."
+            )
+
         # Only change the database if the same input Parameters are not already in it.
         if vtype.tco_parameters == tco_parameters:
             pass
@@ -27,12 +34,19 @@ def init_database(session, scenario):
         #### Add the missing data for BatteryType ####
 
         # Get the battery-TCO parameters for the considered vehicle:
-        tco_parameters_battery = {
-            "name": vtype.name,
-            "procurement_cost": p.battery_dict().get(vtype.name, {}).get("procurement_cost"),
-            "useful_life": p.battery_dict().get(vtype.name, {}).get("useful_life"),
-            "cost_escalation": p.battery_dict().get(vtype.name, {}).get("cost_escalation")
-        }
+        if vtype.name in p.battery_dict():
+            tco_parameters_battery = {
+                "name": vtype.name,
+                "procurement_cost": p.battery_dict().get(vtype.name, {}).get("procurement_cost"),
+                "useful_life": p.battery_dict().get(vtype.name, {}).get("useful_life"),
+                "cost_escalation": p.battery_dict().get(vtype.name, {}).get("cost_escalation")
+            }
+        else:
+            raise ValueError(
+                "Please check your input data and add the missing parameters for the battery of vehicle: "+vtype.name+
+                ". \n Please also make sure that the spelling of the vehicle type in your input ""file is correct."
+            )
+
         # if there already is a battery type linked to the vehicle, the tco parameters are simply added to this battery type.
         if vtype.battery_type_id is not None:
             battery_type = session.query(
@@ -51,7 +65,8 @@ def init_database(session, scenario):
             session.flush()
             vtype.battery_type_id = new_battery_type.id
 
-    #### Next, the tco_parameters for the charging infrastructure is added ####
+
+    #### Next, the tco_parameters for the charging infrastructure is added. ####
 
     #--------Depot charging Stations--------#
 
@@ -75,14 +90,20 @@ def init_database(session, scenario):
         ChargingPointType.scenario_id == scenario.id
     ).all()
 
+    # Add the tco_parameters to the charging points (slots)
     for chp in charging_points:
-        # Add the tco_parameters to the charging points (slots)
-        tco_parameters_charging_point = {
-            "name": chp.name,
-            "procurement_cost": p.charging_stations_dict().get(chp.name, {}).get("procurement_cost"),
-            "useful_life": p.charging_stations_dict().get(chp.name, {}).get("useful_life"),
-            "cost_escalation": p.charging_stations_dict().get(chp.name, {}).get("cost_escalation")
-        }
+        if chp.name in p.charging_stations_dict():
+            tco_parameters_charging_point = {
+                "name": chp.name,
+                "procurement_cost": p.charging_stations_dict().get(chp.name, {}).get("procurement_cost"),
+                "useful_life": p.charging_stations_dict().get(chp.name, {}).get("useful_life"),
+                "cost_escalation": p.charging_stations_dict().get(chp.name, {}).get("cost_escalation")
+            }
+        else:
+            raise ValueError(
+                "Please check your input data and add the missing parameters for the charging slot: "+chp.name+
+                ". \n Please also make sure that the spelling of the charging slot in your input file is correct."
+            )
         chp.tco_parameters =  tco_parameters_charging_point
     session.flush()
 
@@ -174,6 +195,7 @@ def init_database(session, scenario):
         if station.tco_parameters != tco_parameters_oc:
             station.tco_parameters = tco_parameters_oc
     session.commit()
+    print("The database has been inititalized successfully!")
 
     # TODO optimize the initialization to make it more robust.
 
