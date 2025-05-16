@@ -1,11 +1,16 @@
-import numpy as np
+# This file contains methods used in the tco calculation and some additional methods
+
 import csv
 import get_data
 import parameters as p
 import warnings as w
 
 
-def net_present_value(cash_flow, years_after_base_year: int, discount_rate = 0.02):
+def net_present_value(
+        cash_flow,
+        years_after_base_year: int,
+        discount_rate = 0.02
+):
     """
     This method is used to calculate the net present value of any cash flow, a default value for the discount rate is set.
 
@@ -15,10 +20,14 @@ def net_present_value(cash_flow, years_after_base_year: int, discount_rate = 0.0
     :return: A tuple of the present value of the cashflow rounded on 2 decimals and the year after base year in which the cashflow occurs.
     """
     npv = cash_flow / ((1 + discount_rate)**years_after_base_year)
-    return round(npv,2), years_after_base_year
+    return npv, years_after_base_year
 
 
-def annuity(procurement_cost: float, useful_life: int, interest_rate = 0.04):
+def annuity(
+        procurement_cost: float,
+        useful_life: int,
+        interest_rate = 0.04
+):
     """
     This method is used to calculate the annuity of an asset, a default value for the interest rate is set.
 
@@ -28,10 +37,14 @@ def annuity(procurement_cost: float, useful_life: int, interest_rate = 0.04):
     :return: The value of the annuity rounded to 2 decimals.
     """
     ann = procurement_cost*interest_rate / (1-(1+interest_rate)**(-useful_life))
-    return round(ann, 2)
+    return ann
 
 
-def future_cost(cef, base_price, years_after_base_year):
+def future_cost(
+        cef,
+        base_price,
+        years_after_base_year
+):
     """
     This method is used to calculate the costs of a certain category at a certain time taking into account the price escalation factors (pef).
 
@@ -41,10 +54,15 @@ def future_cost(cef, base_price, years_after_base_year):
     :return: The cost in the respective year and the year after the base year in which the cost arises.
     """
     cost = base_price * (1+cef)**years_after_base_year
-    return round(cost, 2), years_after_base_year
+    return cost, years_after_base_year
 
 
-def replacement_cost(base_price, cost_escalation, useful_life, project_duration):
+def replacement_cost(
+        base_price,
+        cost_escalation,
+        useful_life,
+        project_duration
+):
     """
     In this method, the replacement costs of an asset are calculated considering the cost escalation.
 
@@ -74,8 +92,14 @@ def replacement_cost(base_price, cost_escalation, useful_life, project_duration)
     return replacement
 
 
-def total_proc_cef(procurement_cost: float, useful_life: int, project_duration: int, cost_escalation: float,
-                   interest_rate = 0.04, net_discount_rate = 0.02):
+def total_proc_cef(
+        procurement_cost: float,
+        useful_life: int,
+        project_duration: int,
+        cost_escalation: float,
+        interest_rate = 0.04,
+        net_discount_rate = 0.02
+):
     """
     This method calculates the procurement cost of an asset over its lifetime while also accounting for partial consideration
     of the procurement cost in case the project duration is not an integer multiple of the useful life of the considered asset.
@@ -141,7 +165,12 @@ def sim_period_to_year(session, scenario, sim_period = None):
     return 365.25/sim_period
 
 # TODO check the calculation of the staff cost as this function is not yet considered!
-def calculate_total_staff_cost(driver_hours, annual_driver_cost, annual_hours_per_driver = 1600, buffer = 0.1):
+def calculate_total_staff_cost(
+        driver_hours,
+        annual_driver_cost,
+        annual_hours_per_driver = 1600,
+        buffer = 0.1
+):
     """
     This method calculates the total staff cost based on the number of drivers required for the operation of the buses.
     The buffer variable is the amount of hours added to the pure driving time and accounts for the time the drivers work
@@ -157,8 +186,91 @@ def calculate_total_staff_cost(driver_hours, annual_driver_cost, annual_hours_pe
     number_drivers = driver_hours*(1+buffer)%annual_hours_per_driver
     return (number_drivers, annual_driver_cost*number_drivers)
 
+
+# calculate the TCO
+def tco_calculation(
+        capex_input_dict,
+        opex_input_dict,
+        general_input_dict
+):
+    """
+    This method is used to calculate the total cost of ownership based on the data provided through the three
+    dictionaries.
+
+    :param capex_input_dict: This dictionary contains all required input data to calculate the capex section of the TCO.
+    :param opex_input_dict: This dictionary contains all required input data to calculate the opex section of the TCO.
+    :param general_input_dict: This dictionary contains some general input parameters.
+    :return: A dictionary containing the specific tco by vehicle, the total TCO over the project duration,
+             the annual TCO and the specific TCO over the project duration
+    """
+    result = {}
+
+    # ----------Total CAPEX----------#
+
+    total_capex = 0
+
+    # Calculate the total cost for each asset over the project duration.
+    for name, data in capex_input_dict.items():
+
+        # Calculate the procurement cost for the respective asset including replacement.
+        procurement_per_asset_type = total_proc_cef(data["procurement_cost"],
+                                                    data["useful_life"],
+                                                    general_input_dict["project_duration"],
+                                                    data["cost_escalation"],
+                                                    general_input_dict["interest_rate"],
+                                                    general_input_dict["discount_rate"])
+        # Add the cost of this asset to the CAPEX section of the TCO.
+        total_capex += procurement_per_asset_type * data["number_of_assets"]
+
+        # For vehicles, add the specific tco to the output dictionary.
+        if data.get("annual_mileage") != None:
+            # if this is the first entry, add the sepcific_tco_vehicles dictionary
+            if result.get("specific_tco_vehicles") == None:
+                result["specific_tco_vehicles"] = {
+                name: round(((procurement_per_asset_type * data.get("number_of_assets"))/
+                                (data.get("annual_mileage")*general_input_dict.get("project_duration"))),2)
+            }
+            # otherwise add the specific tco to the respective dictionary
+            else:
+                result["specific_tco_vehicles"].update({
+                    name: round(((procurement_per_asset_type * data.get("number_of_assets"))/
+                           (data.get("annual_mileage")*general_input_dict.get("project_duration"))),2)
+                })
+
+    # ----------Total OPEX----------#
+
+    total_opex = 0
+
+    # Calculate the OPEX over the whole project duration.
+    for year in range(general_input_dict["project_duration"]):
+
+        total_opex_in_respective_year = 0
+
+        # Calculate the OPEX for each type over the whole project duration
+        for name, data in opex_input_dict.items():
+            total_opex_in_respective_year += (future_cost(data["cost_escalation"], data["cost"], year)[0]
+                                              * data["depending_on_scale"])
+        # Add the present value of the OPEX to the total OPEX.
+        total_opex += net_present_value(total_opex_in_respective_year, year, general_input_dict["discount_rate"])[0]
+
+    # ----------Calculation of three kinds of TCO----------#
+
+    # TCO over project duration
+    result["TCO_over_PD"] = total_capex+total_opex
+
+    # Annual TCO
+    result["Annual_TCO"] = result["TCO_over_PD"]/general_input_dict["project_duration"]
+
+    # Specific TCO over project duration
+    result["Specific_TCO_over_PD"] = result["Annual_TCO"]/opex_input_dict["maint_cost_vehicles"]["depending_on_scale"]
+
+    return result
+
+
 # get the input data from the input CSV file.
-def read_csv(csvfile):
+def read_csv(
+        csvfile
+):
     """
     This method reads the csv file for the input data and changes the parameters in parameters.py to match the given
     values from the CSV file. If some values are not given, the default values from parameters.py are used instead.
@@ -231,7 +343,10 @@ def read_csv(csvfile):
 
 
 # Cast a value to the required datatype and return None in case of a ValueError
-def cast_value(value, datatype):
+def cast_value(
+        value,
+        datatype
+):
     """
     This method casts the given value to the given datatype. If the cast is not possible due to a ValueError, None is returned.
     It is used in the read_csv method.
@@ -254,7 +369,12 @@ def cast_value(value, datatype):
 
 
 # Set the values in parameters.py to their default value and issue a warning in case there is no value provided.
-def set_default_value(input_value, default_value, data_type, parameter_type):
+def set_default_value(
+        input_value,
+        default_value,
+        data_type,
+        parameter_type
+):
     if cast_value(input_value, data_type) is None:
         w.warn("There was no value provided for the parameter {}. The default value {} is used.".format(parameter_type, default_value))
         return default_value

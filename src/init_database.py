@@ -74,8 +74,8 @@ def init_database(session, scenario):
     Charging_Points = session.query(ChargingPointType).all()
     Slot_120 = Slot_300 = True
     for cp in Charging_Points:
-        if cp.name == "120 kw_Slot": Slot_120 = False
-        if cp.name == "300 kw_Slot": Slot_300 = False
+        if cp.name == "120 kw_Slot" and cp.scenario_id == scenario.id: Slot_120 = False
+        if cp.name == "300 kw_Slot" and cp.scenario_id == scenario.id: Slot_300 = False
     if Slot_120:
         new_charge_point_120 = ChargingPointType(scenario_id=scenario.id, name="120 kw_Slot", name_short="120")
         session.add(new_charge_point_120)
@@ -107,7 +107,8 @@ def init_database(session, scenario):
         chp.tco_parameters =  tco_parameters_charging_point
     session.flush()
 
-    # Next, the charging_point_id needs to be added into "Area" for all depot charging slots
+    # Next, the charging_point_id needs to be added into "Area" for all depot charging slots.
+    # Get the areas in which the charging happens
     all_electrified_areas = session.query(
         Area
     ).join(
@@ -119,13 +120,14 @@ def init_database(session, scenario):
         Process.electric_power is not None
     ).all()
 
-    # get the ChargingPointType.id which is suitable for the depot charging.
+    # Get the ChargingPointType.id which is suitable for the depot charging.
     cpt_id = session.query(
         ChargingPointType.id
     ).filter(
         ChargingPointType.scenario_id == scenario.id,
         ChargingPointType.name_short == "120"
     ).scalar()
+
     # Write the charging_point_type_id into all areas
     for area in all_electrified_areas:
         area.charging_point_type_id = cpt_id
@@ -138,7 +140,7 @@ def init_database(session, scenario):
         "cost_escalation": p.charging_stations_dict().get("DEPOT Station", {}).get("cost_escalation")
     }
 
-    # to do this, the Depots must be excluded from the Stations
+    # To do this, the opportunity charging stations must be excluded from the stations.
     dc_stations = session.query(
         Station
     ).join(
@@ -147,9 +149,11 @@ def init_database(session, scenario):
         Station.is_electrified == True,
         Station.scenario_id == scenario.id
     ).all()
+
+    # TODO check this!
     # Then the tco_parameters for the depot charging stations are added to stations.
     for station in dc_stations:
-        # Add the tco parameters for the OC station
+        # Add the tco parameters for the DC station, if they have been put in incorrectly.
         if station.tco_parameters != tco_parameters_dc:
             station.tco_parameters = tco_parameters_dc
 
@@ -188,15 +192,13 @@ def init_database(session, scenario):
     ).all()
 
     for station in oc_stations:
-        # Add the charging_point_type_id
+        # Add the charging_point_type_id as all oc charging stations are assumed to have a power of 300 kW.
         if station.charging_point_type_id != cpt_id:
             station.charging_point_type_id = cpt_id
         # Add the tco parameters for the OC station
         if station.tco_parameters != tco_parameters_oc:
             station.tco_parameters = tco_parameters_oc
     session.commit()
-    print("The database has been inititalized successfully!")
+    print("The database has been initialized successfully!")
 
     # TODO optimize the initialization to make it more robust.
-
-

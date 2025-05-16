@@ -36,14 +36,16 @@ if __name__ == "__main__":
     engine = create_engine(DATABASE_URL, echo=False)
     with Session(engine) as session:
 
-        # Only the scenario, which was chosen in the environmental varibales is considered.
-        scenario = session.query(Scenario).filter(Scenario.id == SCENARIO_ID).first()
+        # Only the scenario, which was chosen in the environmental variables is considered.
+        scenario = session.query(Scenario).filter(Scenario.id == SCENARIO_ID).one()
 
+        # initialize the database and write the tco parameters in the database.
         init_database(session, scenario)
 
         # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
         vehicles_tco = gd.get_vehicle_count_by_type_tco_parameters(session, scenario)
-
+        vehicle_dict = gd.get_vehicle_count_dict(session, scenario)
+        
         # Get the number of charging infrastructure and slots by type. There are only depot or
         # terminal stop (opportunity) charging stations.
         charging_infrastructure_by_type =gd.get_charging_stations_and_slots_tco(session, scenario)
@@ -62,24 +64,70 @@ if __name__ == "__main__":
 
         #Get the battery size by bus type including the tco parameters
         battery_size_by_vehicle_type_tco = gd.get_battery_size_tco(session, scenario)
+        battery_dict = gd.get_battery_size_dict(session, scenario)
 
         session.close()
 
 
-    # ----------calculate some additional parameters----------#
+    #----------calculate some additional parameters----------#
 
     # Calculate the total number of vehicles. This is needed in the OPEX calculation.
     total_number_vehicles = sum(x[2] for x in vehicles_tco)
+    total_number_charging_slots = sum(x["number_of_assets"] for key,x in charging_infrastructure_by_type.items() if key in ["120 kw_Slot", "300 kw_Slot"])
 
     # Some parameters are put into lists to make the calculations easier
     opex_price_list = [p.staff_cost, p.maint_cost, p.fuel_cost, p.insurance, p.taxes]
     opex_amount_list = [total_driver_hours, annual_fleet_mileage, total_energy_consumption, total_number_vehicles, total_number_vehicles]
     opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_fuel, p.pef_general, p.pef_general]
 
+    # make a dictionary including all tco parameters needed for the calculation
+    capex_input_dict = vehicle_dict | battery_dict | charging_infrastructure_by_type
+
+    # Create a dictionary including all relevant OPEX parameters
+    opex_input_dict = {
+        "staff_cost": {
+            "cost": p.staff_cost,
+            "depending_on_scale": total_driver_hours,
+            "cost_escalation": p.pef_wages
+        },
+        "maint_cost_vehicles": {
+            "cost": p.maint_cost,
+            "depending_on_scale": annual_fleet_mileage,
+            "cost_escalation": p.pef_general
+        },
+        #"main_cost_infra":{
+        #     "cost": p.maint_infr_cost,
+        #     "depending_on_scale": total_number_charging_slots,
+        #     "cost_escalation": p.pef_general
+        # },
+        "fuel_cost": {
+            "cost": p.fuel_cost,
+            "depending_on_scale": total_energy_consumption,
+            "cost_escalation": p.pef_fuel
+        },
+        "insurance": {
+            "cost": p.insurance,
+            "depending_on_scale": total_number_vehicles,
+            "cost_escalation": p.pef_general
+        },
+        "taxes": {
+            "cost": p.taxes,
+            "depending_on_scale": total_number_vehicles,
+            "cost_escalation": p.pef_general
+        }
+    }
+    tco_input_dict = {
+        "project_duration": p.project_duration,
+        "interest_rate": p.interest_rate,
+        "discount_rate": p.inflation_rate
+    }
+
+    # Calculate the TCO
+    tco_result = f.tco_calculation(capex_input_dict,opex_input_dict,tco_input_dict)
 
     #----------TCO calculation----------#
 
-    # ----------Total CAPEX----------#
+    #----------Total CAPEX----------#
 
     # The CAPEX of the vehicles, the batteries and the infrastructure is calculated using the total_proc_cef method
     # in order to obtain the CAPEX part of the TCO.
@@ -110,9 +158,9 @@ if __name__ == "__main__":
     for key,char_infra in charging_infrastructure_by_type.items():
         # Calculate the procurement cost for each charging infrastructure type.
         procurement_per_char_infra_type = f.total_proc_cef(
-            char_infra["tco_parameters"].get("procurement_cost"), char_infra["tco_parameters"].get("useful_life"),
-            p.project_duration, char_infra["tco_parameters"].get("cost_escalation"), p.interest_rate, p.inflation_rate)
-        Total_CAPEX += procurement_per_char_infra_type * char_infra["number_of_type"]
+            char_infra["procurement_cost"], char_infra["useful_life"],
+            p.project_duration, char_infra["cost_escalation"], p.interest_rate, p.inflation_rate)
+        Total_CAPEX += procurement_per_char_infra_type * char_infra["number_of_assets"]
 
     #----------Total OPEX----------#
 
@@ -152,40 +200,58 @@ if __name__ == "__main__":
     #-----------Save the output to a JSON file-----------#
     vehicle_input = []
     battery_input = []
-    infra_input = []
+    infra_input = {}
     keys = ["name", "procurement_cost", "useful_life", "cost_escalation"]
-    for i in p.Vehicles:
+
+    # Get the tco parameters from the vehicles used in this calculation
+    for i in vehicles_tco:
         vehicle_in={}
-        for j in range(len(keys)):
-            vehicle_in[keys[j]] = i[j]
+        for key in keys:
+            vehicle_in[key] = i[3].get(key)
+        vehicle_in["number_of_vehicles"] = i[2]
         vehicle_input.append(vehicle_in)
-    for i in p.Battery:
+
+    # Get the tco parameters for the Batteries used in this calculation
+    for i in battery_size_by_vehicle_type_tco:
         battery_in = {}
-        for j in range(len(keys)):
-            battery_in[keys[j]] = i[j]
+        for key in keys:
+            battery_in[key] = i[3].get(key)
+        battery_in["battery_size"] = i[2]
         battery_input.append(battery_in)
-    for i in p.Charging_Stations:
-        infra_in = {}
-        for j in range(len(keys)):
-            infra_in[keys[j]] = i[j]
-        infra_input.append(infra_in)
+
+    # Get the tco parameters of the infrastructure used in this calculation.
+    for key,data in charging_infrastructure_by_type.items():
+        infra_input[key] ={
+            "procurement_cost": data["procurement_cost"],
+            "useful_life": data["useful_life"],
+            "cost_escalation": data["cost_escalation"],
+            "number_of_infrastructure": data["number_of_assets"],
+        }
+
 
     # Calculate the total nuber of charging slots.
     total_number_charging_slots = {
-        "120 kw_Slot": charging_infrastructure_by_type["120 kw_Slot"]["number_of_type"],
-        "300 kw_Slot": charging_infrastructure_by_type["300 kw_Slot"]["number_of_type"],
-        "Total": (charging_infrastructure_by_type["120 kw_Slot"]["number_of_type"]
-                  + charging_infrastructure_by_type["300 kw_Slot"]["number_of_type"])
+        "120 kw_Slot": charging_infrastructure_by_type.get("120 kw_Slot INFRASTRUCTURE", {}).get("number_of_assets",0),
+        "300 kw_Slot": charging_infrastructure_by_type.get("300 kw_Slot INFRASTRUCTURE",{}).get("number_of_assets",0),
+        "Total": (charging_infrastructure_by_type.get("120 kw_Slot INFRASTRUCTURE", {}).get("number_of_assets",0)
+                  + charging_infrastructure_by_type.get("300 kw_Slot INFRASTRUCTURE", {}).get("number_of_assets",0))
+    }
+
+    total_charging_stations = {
+        "DEPOT Station:": charging_infrastructure_by_type.get("DEPOT Station INFRASTRUCTURE", {}).get("number_of_assets",0),
+        "OPPORTUNITY Station": charging_infrastructure_by_type.get("OPPORTUNITY Station INFRASTRUCTURE", {}).get("number_of_assets",0),
+        "Total": (charging_infrastructure_by_type.get("DEPOT Station INFRASTRUCTURE",{}).get("number_of_assets",0)
+                  + charging_infrastructure_by_type.get("OPPORTUNITY Station INFRASTRUCTURE", {}).get("number_of_assets",0))
     }
 
     # The dictionary which will be saved to the json file is created.
     data_out = {
-        "input_data" : {
-            "Vehicles": vehicle_input,
-            "Battery": battery_input,
-            "Charging_Stations": infra_input,
-            "Discount_rate": (p.inflation_rate, "% p.a."),
-            "Interest_rate": (p.inflation_rate, "% p.a."),
+        "input_data" : capex_input_dict | {
+            #"Vehicles": vehicle_input,
+            #"Battery": battery_input,
+            #"Charging_Stations": infra_input,
+            "Discount_rate": ((p.inflation_rate*100), "% p.a."),
+            "Interest_rate": ((p.interest_rate*100), "% p.a."),
             "Project_duration": (p.project_duration, "years"),
             "Staff_cost": (p.staff_cost, "EUR/h"),
             "Fuel_cost": (p.fuel_cost,"EUR/kWh"),
@@ -193,18 +259,19 @@ if __name__ == "__main__":
             "Maintenance_cost_infrastructure": (p.maint_infr_cost,"EUR/slot"),
             "Taxes": (p.taxes,"EUR/Bus p.a."),
             "Insurance": (p.insurance,"EUR/Bus p.a."),
-            "General_cost_escalation": (p.pef_general, "% p.a."),
-            "Wages_cost_escalation": (p.pef_wages, "% p.a."),
-            "Fuel_cost_escalation": (p.fuel_cost, "% p.a.")
+            "General_cost_escalation": ((p.pef_general*100), "% p.a."),
+            "Wages_cost_escalation": ((p.pef_wages*100), "% p.a."),
+            "Fuel_cost_escalation": ((p.pef_fuel*100), "% p.a.")
         },
         "Results":{
             "Number_of_vehicles": total_number_vehicles,
             "Number of charging slots": total_number_charging_slots,
-            "Total_annual_driver_hours": (total_driver_hours, "h p.a."),
-            "Total_annual_fleet_mileage": (annual_fleet_mileage, "km p.a."),
-            "Total_TCO_over_pd": (round(tco_pd, 2), "EUR"),
-            "Annual_TCO": (round(tco_ann, 2), "EUR p.a."),
-            "Specific_TCO": (round(tco_sp_pd, 2), "EUR/km")
+            "Number of charging stations": total_charging_stations,
+            "Total_annual_driver_hours": (round(total_driver_hours, 2), "h p.a."),
+            "Total_annual_fleet_mileage": (round(annual_fleet_mileage,2), "km p.a."),
+            "Total_TCO_over_pd": (round(tco_result["TCO_over_PD"], 2), "EUR"),
+            "Annual_TCO": (round(tco_result["Annual_TCO"], 2), "EUR p.a."),
+            "Specific_TCO": (round(tco_result["Specific_TCO_over_PD"], 2), "EUR/km")
         }
     }
 
