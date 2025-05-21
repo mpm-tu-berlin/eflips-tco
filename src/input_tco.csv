@@ -2,10 +2,10 @@ vehicle_name;vehicle_procurement_cost;vehicle_useful_life;vehicle_battery_name;b
 Ebusco 3.0 12;370000;12;Ebusco 3.0 12;350;6;OPPORTUNITY Station;500000;20;20;0.025;0.04;21.875;0.175;0.35;1000;400.5;300;TRUE
 Solaris Urbino 18;603000;12;Solaris Urbino 18;350;6;300 kw_Slot;275000;20;;;;;;;;;;
 Alexander Dennis Enviro500EV;700000;12;Alexander Dennis Enviro500EV;350;6;DEPOT Station;3400000;20;;;;;;;;;;
-Add more buses here;;;;;;120 kw_Slot;100000;20;;;;;;;;;;
-Ebusco 3.0 12 large battery;370000;12;Ebusco 3.0 12 large battery;300;6;Add more infrastructure here;;;;;;;;;;;;
-Solaris Urbino 18 large battery;603000;12;Solaris Urbino 18 large battery;300;6;;;;;;;;;;;;;
-Alexander Dennis Enviro500EV large battery;700000;12;Alexander Dennis Enviro500EV large battery;300;6;;;;;;;;;;;;;
-Ebusco 3.0 12 small battery;370000;12;Ebusco 3.0 12 small battery;400;6;;;;;;;;;;;;;
-Solaris Urbino 18 small battery;603000;12;Solaris Urbino 18 small battery;400;6;;;;;;;;;;;;;
-Alexander Dennis Enviro500EV small battery;700000;12;Alexander Dennis Enviro500EV small battery;400;6;;;;;;;;;;;;;
+Ebusco 3.0 12 large battery;370000;12;Ebusco 3.0 12 large battery;350;6;120 kw_Slot;100000;20;;;;;;;;;;
+Solaris Urbino 18 large battery;603000;12;Solaris Urbino 18 large battery;350;6;Add more infrastructure here;;;;;;;;;;;;
+Alexander Dennis Enviro500EV large battery;700000;12;Alexander Dennis Enviro500EV large battery;350;6;;;;;;;;;;;;;
+Ebusco 3.0 12 small battery;370000;12;Ebusco 3.0 12 small battery;350;6;;;;;;;;;;;;;
+Solaris Urbino 18 small battery;603000;12;Solaris Urbino 18 small battery;350;6;;;;;;;;;;;;;
+Alexander Dennis Enviro500EV small battery;700000;12;Alexander Dennis Enviro500EV small battery;350;6;;;;;;;;;;;;;
+Add more buses here;;;;;;;;;;;;;;;;;;

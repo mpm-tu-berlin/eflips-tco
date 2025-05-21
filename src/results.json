@@ -1,149 +1,80 @@
 {
     "input_data": {
-        "Vehicles": [
-            {
-                "name": "Ebusco 3.0 12",
-                "procurement_cost": 370000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Solaris Urbino 18",
-                "procurement_cost": 603000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV",
-                "procurement_cost": 700000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Ebusco 3.0 12 large battery",
-                "procurement_cost": 370000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Solaris Urbino 18 large battery",
-                "procurement_cost": 603000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV large battery",
-                "procurement_cost": 700000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Ebusco 3.0 12 small battery",
-                "procurement_cost": 370000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Solaris Urbino 18 small battery",
-                "procurement_cost": 603000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV small battery",
-                "procurement_cost": 700000.0,
-                "useful_life": 12,
-                "cost_escalation": 0.025
-            }
-        ],
-        "Battery": [
-            {
-                "name": "Ebusco 3.0 12",
-                "procurement_cost": 350.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Solaris Urbino 18",
-                "procurement_cost": 350.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV",
-                "procurement_cost": 350.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Ebusco 3.0 12 large battery",
-                "procurement_cost": 300.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Solaris Urbino 18 large battery",
-                "procurement_cost": 300.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV large battery",
-                "procurement_cost": 300.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Ebusco 3.0 12 small battery",
-                "procurement_cost": 400.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Solaris Urbino 18 small battery",
-                "procurement_cost": 400.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            },
-            {
-                "name": "Alexander Dennis Enviro500EV small battery",
-                "procurement_cost": 400.0,
-                "useful_life": 6,
-                "cost_escalation": -0.03
-            }
-        ],
-        "Charging_Stations": [
-            {
-                "name": "OPPORTUNITY Station",
-                "procurement_cost": 500000.0,
-                "useful_life": 20,
-                "cost_escalation": 0.02
-            },
-            {
-                "name": "300 kw_Slot",
-                "procurement_cost": 275000.0,
-                "useful_life": 20,
-                "cost_escalation": 0.02
-            },
-            {
-                "name": "DEPOT Station",
-                "procurement_cost": 3400000.0,
-                "useful_life": 20,
-                "cost_escalation": 0.02
-            },
-            {
-                "name": "120 kw_Slot",
-                "procurement_cost": 100000.0,
-                "useful_life": 20,
-                "cost_escalation": 0.02
-            }
-        ],
+        "Ebusco 3.0 12 large battery VEHICLE": {
+            "procurement_cost": 370000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.025,
+            "number_of_assets": 346,
+            "annual_mileage": 24871161.239815243,
+            "specific_energy_consumption": 1.9358224118321703
+        },
+        "Solaris Urbino 18 large battery VEHICLE": {
+            "procurement_cost": 603000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.025,
+            "number_of_assets": 730,
+            "annual_mileage": 52428715.66036733,
+            "specific_energy_consumption": 2.4355260950424515
+        },
+        "Alexander Dennis Enviro500EV large battery VEHICLE": {
+            "procurement_cost": 700000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.025,
+            "number_of_assets": 132,
+            "annual_mileage": 9461708.013347758,
+            "specific_energy_consumption": 2.2988500651131205
+        },
+        "Solaris Urbino 18 large battery BATTERY": {
+            "procurement_cost": 224000.0,
+            "useful_life": 6,
+            "cost_escalation": -0.03,
+            "battery_capacity": 640.0,
+            "number_of_assets": 730
+        },
+        "Alexander Dennis Enviro500EV large battery BATTERY": {
+            "procurement_cost": 165200.0,
+            "useful_life": 6,
+            "cost_escalation": -0.03,
+            "battery_capacity": 472.0,
+            "number_of_assets": 132
+        },
+        "Ebusco 3.0 12 large battery BATTERY": {
+            "procurement_cost": 175000.0,
+            "useful_life": 6,
+            "cost_escalation": -0.03,
+            "battery_capacity": 500.0,
+            "number_of_assets": 346
+        },
+        "120 kw_Slot INFRASTRUCTURE": {
+            "procurement_cost": 100000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 1189
+        },
+        "300 kw_Slot INFRASTRUCTURE": {
+            "procurement_cost": 275000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 78
+        },
+        "DEPOT Station INFRASTRUCTURE": {
+            "procurement_cost": 3400000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 9
+        },
+        "OPPORTUNITY Station INFRASTRUCTURE": {
+            "procurement_cost": 500000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 44
+        },
         "Discount_rate": [
-            0.025,
+            2.5,
             "% p.a."
         ],
         "Interest_rate": [
-            0.025,
+            4.0,
             "% p.a."
         ],
         "Project_duration": [
@@ -175,43 +106,48 @@
             "EUR/Bus p.a."
         ],
         "General_cost_escalation": [
-            0.02,
+            2.0,
             "% p.a."
         ],
         "Wages_cost_escalation": [
-            0.02,
+            2.0,
             "% p.a."
         ],
         "Fuel_cost_escalation": [
-            0.175,
+            3.8,
             "% p.a."
         ]
     },
     "Results": {
-        "Number_of_vehicles": 1222,
+        "Number_of_vehicles": 1208,
         "Number of charging slots": {
-            "120 kw_Slot": 1199,
-            "300 kw_Slot": 171,
-            "Total": 1370
+            "120 kw_Slot": 1189,
+            "300 kw_Slot": 78,
+            "Total": 1267
+        },
+        "Number of charging stations": {
+            "DEPOT Station:": 9,
+            "OPPORTUNITY Station": 44,
+            "Total": 53
         },
         "Total_annual_driver_hours": [
-            1829909.1044312343,
+            5076800.0,
             "h p.a."
         ],
         "Total_annual_fleet_mileage": [
-            32704808.216320995,
+            86761584.91,
             "km p.a."
         ],
         "Total_TCO_over_pd": [
-            3147149200.44,
+            5607748185.58,
             "EUR"
         ],
         "Annual_TCO": [
-            157357460.02,
+            280387409.28,
             "EUR p.a."
         ],
         "Specific_TCO": [
-            4.81,
+            3.23,
             "EUR/km"
         ]
     }
