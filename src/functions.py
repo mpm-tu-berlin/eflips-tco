@@ -461,7 +461,7 @@ def tco_plot(result_dict, scenario_id):
     # Set limit on y axis
     ax.set_ylim(top = bottom+0.5)
     # set title
-    ax.set_title('Specific Total Cost of Ownershipin Scenario {}'.format(str(scenario_id)))
+    ax.set_title('Specific Total Cost of Ownership in Scenario {}'.format(str(scenario_id)))
     # set the y-axis label
     ax.set_ylabel('TCO in €/km')
 

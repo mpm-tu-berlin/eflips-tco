@@ -136,7 +136,7 @@ if __name__ == "__main__":
     #                      "maint_cost_infra", "fuel_cost", "interest_rate", "discount_rate"], SCENARIO_ID)
 
     # Calculate the TCO
-    tco_result = f.tco_calculation(capex_input_dict,opex_input_dict,tco_input_dict, True)
+    tco_result = f.tco_calculation(capex_input_dict,opex_input_dict,tco_input_dict)
 
     # TCO over project duration
     tco_pd = tco_result["TCO_over_PD"]
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     }
 
     # Save the data in the json file.
-    with open('results_scn{}.json'.format(SCENARIO_ID), 'w') as outfile:
+    with open('results_scn_{}.json'.format(SCENARIO_ID), 'w') as outfile:
         json.dump(data_out, outfile, indent=4)
         print("\nThe TCO calculation has been completed successfully. The results are saved in 'results.json'.\n"
               "Before recalculating the TCO, make sure to save your results in a different file as 'results.json' will be overwritten.")
