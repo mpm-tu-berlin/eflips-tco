@@ -1,0 +1,29 @@
+{
+    "tco_by_type": {
+        "Ebusco 3.0 12 large battery VEHICLE": 0.14571583179557315,
+        "Solaris Urbino 18 large battery VEHICLE": 0.48779146380770844,
+        "Alexander Dennis Enviro500EV large battery VEHICLE": 0.10654605378186176,
+        "Solaris Urbino 18 large battery BATTERY": 0.2464252637151476,
+        "Alexander Dennis Enviro500EV large battery BATTERY": 0.03419555838757731,
+        "Ebusco 3.0 12 large battery BATTERY": 0.09372671420086824,
+        "120 kw_Slot INFRASTRUCTURE": 0.08364634749036413,
+        "DEPOT Station INFRASTRUCTURE": 0.020509440971195052,
+        "OPPORTUNITY Station INFRASTRUCTURE": 0.0003351215844966512,
+        "staff_cost": 1.1939100772540205,
+        "maint_cost_vehicles": 0.33424551530338015,
+        "maint_cost_infra": 0.013588069640353997,
+        "fuel_cost": 0.4579219196130942,
+        "insurance": 0.004158079964464097,
+        "taxes": 0.005551036752559567
+    },
+    "specific_tco_vehicles": {
+        "Ebusco 3.0 12 large battery VEHICLE": 0.51,
+        "Solaris Urbino 18 large battery VEHICLE": 0.81,
+        "Alexander Dennis Enviro500EV large battery VEHICLE": 0.95
+    },
+    "TCO_over_PD": 5663093605.89698,
+    "Annual_TCO": 283154680.29484904,
+    "Specific_TCO_over_PD": 3.2282664942626655,
+    "Annual_fleet_mileage": 87711061.27640848,
+    "Annual_passenger_mileage": 81348766.09621756
+}
