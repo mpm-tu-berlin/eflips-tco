@@ -1,9 +1,14 @@
 # This file contains methods used in the tco calculation and some additional methods
 
-import csv
+import csv,json
+import matplotlib.pyplot as plt
+from matplotlib import colormaps as cm
+import numpy as np
+
 import get_data
 import parameters as p
 import warnings as w
+
 
 
 def net_present_value(
@@ -46,7 +51,8 @@ def future_cost(
         years_after_base_year
 ):
     """
-    This method is used to calculate the costs of a certain category at a certain time taking into account the price escalation factors (pef).
+    This method is used to calculate the costs of a certain category at a certain time taking into account the cost
+    escalation factors (cef).
 
     :param cef: The cost escalation factor which represents the annual change of the costs / prices.
     :param base_price: The price in the base year.
@@ -70,7 +76,9 @@ def replacement_cost(
     :param cost_escalation: The cost escalation factor which represents the annual change of the costs / prices.
     :param useful_life: The useful life of the respective asset.
     :param project_duration: The duration of the project as a timeframe that is considered in this calculation.
-    :return: The replacement cost as well as the number of years after the base year in which the replacemtn is conducted are returned with a binary variable which shows whether the useful life of the replaced asset is still within the project duration.
+    :return: The replacement cost as well as the number of years after the base year in which the replacement is
+            conducted are returned with a binary variable which shows whether the useful life of the replaced asset is
+            still within the project duration.
     """
     replacement: list[tuple[float, int, bool]] = []
     # get the number of full replacements
@@ -111,7 +119,8 @@ def total_proc_cef(
     :param cost_escalation: The cost escalation factor which represents the annual change of the costs / prices.
     :param interest_rate: The interest rate which is the cost of the capital needed to procure the respective asset.
     :param net_discount_rate: The discount rate by whixch the cashflows are discounted.
-    :return: The total procurement cost of the respective asset over the project duration considering the cost escalation and the present value
+    :return: The total procurement cost of the respective asset over the project duration considering the cost
+            escalation and the present value
     """
     # Get a list with all procurements taking place over the project duration
     all_procurements = replacement_cost(procurement_cost, cost_escalation, useful_life, project_duration)
@@ -158,40 +167,42 @@ def sim_period_to_year(session, scenario, sim_period = None):
     :param session: The session object.
     :param scenario: The scenario object.
     :param sim_period: The simulation period over which the simulation in eFLIPS is conducted.
-    :return: A factor by which all time dependent values obtained from eFLIPS need to be multiplied to obtain annual values.
+    :return: A factor by which all time dependent values obtained from eFLIPS need to be multiplied to obtain annual
+            values.
     """
     if sim_period is None:
         sim_period = get_data.get_simulation_period(session, scenario).total_seconds()/86400
     return 365.25/sim_period
 
 # TODO check the calculation of the staff cost as this function is not yet considered!
-def calculate_total_staff_cost(
+def calculate_total_driver_hours(
         driver_hours,
-        annual_driver_cost,
         annual_hours_per_driver = 1600,
         buffer = 0.1
 ):
     """
-    This method calculates the total staff cost based on the number of drivers required for the operation of the buses.
+    This method calculates the total driver hours based on the number of drivers required for the operation of the buses.
     The buffer variable is the amount of hours added to the pure driving time and accounts for the time the drivers work
     but are not operating the bus.
 
     :param driver_hours: The amount of time the buses are operated by a driver.
-    :param annual_driver_cost: The cost of a single bus driver per year.
     :param annual_hours_per_driver: The time a driver work over the course of one year.
-    :param buffer: An additional factor which raises the total driver hours in order to account for any additional time in which the bus is not operated but the driver is still working.
+    :param buffer: An additional factor which raises the total driver hours in order to account for any additional time
+                    in which the bus is not operated but the driver is still working.
     :return: A tuple of the number of drivers and the total staff cost in one year.
     """
     # Integers are required, so the % is used
-    number_drivers = driver_hours*(1+buffer)%annual_hours_per_driver
-    return (number_drivers, annual_driver_cost*number_drivers)
+    number_drivers = (driver_hours*(1+buffer))//annual_hours_per_driver
+    actual_driver_hours = annual_hours_per_driver * (number_drivers+1)
+    return actual_driver_hours
 
 
 # calculate the TCO
 def tco_calculation(
         capex_input_dict,
         opex_input_dict,
-        general_input_dict
+        general_input_dict,
+        save_result = False
 ):
     """
     This method is used to calculate the total cost of ownership based on the data provided through the three
@@ -200,10 +211,14 @@ def tco_calculation(
     :param capex_input_dict: This dictionary contains all required input data to calculate the capex section of the TCO.
     :param opex_input_dict: This dictionary contains all required input data to calculate the opex section of the TCO.
     :param general_input_dict: This dictionary contains some general input parameters.
+    :param save_result: Binary operator which determines, whether the result dictionary is directly saved to a json file.
     :return: A dictionary containing the specific tco by vehicle, the total TCO over the project duration,
              the annual TCO and the specific TCO over the project duration
     """
-    result = {}
+    result = {
+        "tco_by_type": {}
+    }
+
 
     # ----------Total CAPEX----------#
 
@@ -221,6 +236,11 @@ def tco_calculation(
                                                     general_input_dict["discount_rate"])
         # Add the cost of this asset to the CAPEX section of the TCO.
         total_capex += procurement_per_asset_type * data["number_of_assets"]
+        # Add this cost component to the result dict for detailed analysis fo the tco
+        result["tco_by_type"].update({
+            name: (procurement_per_asset_type*data["number_of_assets"]
+                   /(opex_input_dict["maint_cost_vehicles"].get("depending_on_scale")*general_input_dict.get("project_duration")))
+        })
 
         # For vehicles, add the specific tco to the output dictionary.
         if data.get("annual_mileage") != None:
@@ -241,17 +261,23 @@ def tco_calculation(
 
     total_opex = 0
 
-    # Calculate the OPEX over the whole project duration.
-    for year in range(general_input_dict["project_duration"]):
+    # Calculate the OPEX for each category over the whole project duration.
+    for name, data in opex_input_dict.items():
 
-        total_opex_in_respective_year = 0
+        total_opex_of_type=0
 
-        # Calculate the OPEX for each type over the whole project duration
-        for name, data in opex_input_dict.items():
-            total_opex_in_respective_year += (future_cost(data["cost_escalation"], data["cost"], year)[0]
-                                              * data["depending_on_scale"])
-        # Add the present value of the OPEX to the total OPEX.
-        total_opex += net_present_value(total_opex_in_respective_year, year, general_input_dict["discount_rate"])[0]
+        # Calculate the OPEX for each year.
+        for year in range(general_input_dict["project_duration"]):
+            opex_cost_in_respective_year = future_cost(data["cost_escalation"], data["cost"], year)[0]*data["depending_on_scale"]
+            total_opex_of_type += net_present_value(opex_cost_in_respective_year, year, general_input_dict["discount_rate"])[0]
+        total_opex += total_opex_of_type
+
+        # Save the total OPEX for each category in the result dictionary.
+        result["tco_by_type"].update(
+            {
+                name: (total_opex_of_type/(opex_input_dict["maint_cost_vehicles"].get("depending_on_scale")*general_input_dict.get("project_duration")))
+            }
+        )
 
     # ----------Calculation of three kinds of TCO----------#
 
@@ -263,6 +289,14 @@ def tco_calculation(
 
     # Specific TCO over project duration
     result["Specific_TCO_over_PD"] = result["Annual_TCO"]/opex_input_dict["maint_cost_vehicles"]["depending_on_scale"]
+
+    # save the mileage used to calculate the specific TCO
+    result["Annual_fleet_mileage"] = general_input_dict["annual_fleet_mileage"]
+    result["Annual_passenger_mileage"]=general_input_dict["passenger_mileage"]
+
+    if save_result:
+        with open("result_scenario_{}.json".format(str(general_input_dict["scenario"])),"w") as file:
+            json.dump(result, file, indent = 4)
 
     return result
 
@@ -382,3 +416,56 @@ def set_default_value(
         return cast_value(input_value, data_type)
 
 
+def tco_plot(result_dict, scenario_id):
+    """
+    This method plots the result of the specific tco in a bar chart in which the composition of the specific tco are highlighted.
+    :param result_dict: The result dictionary as it is calculated in the tco_calculation method.
+    :return: A plot of the tco.
+    """
+    # Make a list with all cost categories.
+    tco_data = {
+        "Infrastructure": 0,
+        "Vehicle": 0,
+        "Battery": 0,
+        "Other Cost": (result_dict["tco_by_type"]["insurance"]+result_dict["tco_by_type"]["taxes"]),
+        "Vehicle Maintenance Cost": result_dict["tco_by_type"]["maint_cost_vehicles"],
+        "Infrastructure Maintenance Cost": result_dict["tco_by_type"]["maint_cost_infra"],"Staff Cost": result_dict["tco_by_type"]["staff_cost"],
+        "Energy Cost": result_dict["tco_by_type"]["fuel_cost"]
+    }
+    for name, data in result_dict["tco_by_type"].items():
+        if "INFRASTRUCTURE" in name:
+            tco_data["Infrastructure"] += data
+        elif "VEHICLE" in name:
+            tco_data["Vehicle"] += data
+        elif "BATTERY" in name:
+            tco_data["Battery"] += data
+
+    # Create a figure with fixed size.
+    Fig = plt.figure(1, (5,8))
+    ax = Fig.add_subplot(1, 1, 1)
+
+    # Use colormaps to choose the colors for the plot
+    color = cm.get_cmap('managua')(np.linspace(0,1,len(tco_data.keys())))
+
+    # Bottom of the stacked bars.
+    bottom = 0
+    # Create the stacked bar plot
+    for color, [tco_categories, data] in zip(color, tco_data.items()):
+        p = ax.bar('specific TCO', data, width = 0.05, label=tco_categories, bottom=bottom, color=color)
+        bottom += data
+        ax.bar_label(p, label_type='center',padding=3, fmt='%.2f')
+
+    # write the total tco over the bar
+    ax.text(0, (bottom+0.1),s = str("{:.2f}".format(round(bottom,2))), ha = 'center', va = 'bottom', fontweight = 'bold')
+
+    # Set limit on y axis
+    ax.set_ylim(top = bottom+0.5)
+    # set title
+    ax.set_title('Specific Total Cost of Ownershipin Scenario {}'.format(str(scenario_id)))
+    # set the y-axis label
+    ax.set_ylabel('TCO in €/km')
+
+    ax.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center', ncol = 2)
+    plt.tight_layout()
+    plt.show()
+    Fig.savefig("tco_plot_scn_{}.png".format(scenario_id))

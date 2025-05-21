@@ -175,7 +175,7 @@ def get_charging_stations_and_slots_tco(
     ).all()
 
     # Get the number of OC slots and add all required data to the charging infrastructure dictionary.
-    start_time = time.time() # measure the runtime
+    #start_time = time.time() # measure the runtime
     for station in oc_stations:
         # Get the number of charging slots in the station.
         try:
@@ -198,11 +198,11 @@ def get_charging_stations_and_slots_tco(
             w.warn("No charging slots have been found for the opportunity charging stations. They are not considered in the calculation.")
 
     # runtime test
-    end_time = time.time()
+    #end_time = time.time()
     # print the runtime
-    print("\nRuntime calculation of the number of OC charging slots: {} seconds\n".format((end_time-start_time)))
+    #print("\nRuntime calculation of the number of OC charging slots: {} seconds\n".format((end_time-start_time)))
 
-    # Get th charging stations and the respective tco parameters.
+    # Get the charging stations and the respective tco parameters.
     stations = session.query(
         Station.charge_type,
         func.count(Station.id),
@@ -298,6 +298,20 @@ def get_fleet_mileage_by_vehicle_type(
 
     return annual_mileage_by_vtype
 
+def get_passenger_mileage(session, scenario):
+    result = session.query(
+        func.sum(Route.distance)
+    ).join(
+        Trip, Route.id == Trip.route_id
+    ).join(
+        Event, Event.trip_id == Trip.id
+    ).filter(
+        Event.scenario_id == scenario.id,
+        Trip.trip_type == "PASSENGER"
+    ).one()
+
+    annual_mileage = result[0]*functions.sim_period_to_year(session, scenario)/1000
+    return annual_mileage
 
 # Calculate the total fleet mileage not grouped by vehicle type.
 def get_total_fleet_mileage(
