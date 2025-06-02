@@ -159,22 +159,6 @@ def total_proc_cef(
     return sum(annuities_pv)
 
 
-def sim_period_to_year(session, scenario, sim_period = None):
-    """
-    This method is used to calculate a factor by which the quantities obtained from the simulation need to be multiplied
-    with to obtain the quantities for one whole year.
-
-    :param session: The session object.
-    :param scenario: The scenario object.
-    :param sim_period: The simulation period over which the simulation in eFLIPS is conducted.
-    :return: A factor by which all time dependent values obtained from eFLIPS need to be multiplied to obtain annual
-            values.
-    """
-    if sim_period is None:
-        sim_period = get_data.get_simulation_period(session, scenario).total_seconds()/86400
-    return 365.25/sim_period
-
-# TODO check the calculation of the staff cost as this function is not yet considered!
 def calculate_total_driver_hours(
         driver_hours,
         annual_hours_per_driver = 1600,

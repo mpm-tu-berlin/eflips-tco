@@ -96,7 +96,7 @@ def get_vehicle_count_dict(
         for energy, tco in energy_consumption:
             if tco.get('name') == tco_parameters.get('name'):
                 # Calculate the annual energy consumption
-                energy_consumption_this_vtype = energy * functions.sim_period_to_year(session=session, scenario=scenario)
+                energy_consumption_this_vtype = energy * get_simulation_period(session=session, scenario=scenario)[1]
 
         # Add the data to the dictionary
         result_dict[(tco_parameters.get("name")+" VEHICLE")] = {
@@ -170,8 +170,11 @@ def get_charging_stations_and_slots_tco(
         ChargingPointType
     ).join(
         ChargingPointType, ChargingPointType.id == Station.charging_point_type_id # join only the OC slots, as this is NULL for all depot Charging slots.
+    ).join(
+        Event, Event.station_id == Station.id
     ).filter(
-        Station.scenario_id == scenario.id
+        Station.scenario_id == scenario.id,
+        Event.event_type == 'CHARGING_OPPORTUNITY'
     ).all()
 
     # Get the number of OC slots and add all required data to the charging infrastructure dictionary.
@@ -205,11 +208,17 @@ def get_charging_stations_and_slots_tco(
     # Get the charging stations and the respective tco parameters.
     stations = session.query(
         Station.charge_type,
-        func.count(Station.id),
+        func.count(func.distinct(Station.id)),
         Station.tco_parameters
+    ).join(
+        Event, Event.station_id == Station.id
     ).filter(
         Station.scenario_id == scenario.id,
-        Station.is_electrified
+        Station.is_electrified,
+        or_(
+            Event.event_type == 'CHARGING_OPPORTUNITY',
+            Event.event_type == 'CHARGING_DEPOT'
+        )
     ).group_by(
         Station.tco_parameters,
         Station.charge_type
@@ -255,7 +264,7 @@ def get_total_energy_consumption(
     ).one()
 
     # Calculate the annual energy consumption
-    energy_consumption = result[0] * functions.sim_period_to_year(session=session, scenario=scenario)
+    energy_consumption = result[0] * get_simulation_period(session=session, scenario=scenario)[1]
 
     return energy_consumption
 
@@ -293,7 +302,7 @@ def get_fleet_mileage_by_vehicle_type(
     for i in range(len(result)):
         # Add the respective tuple to the list.
         annual_mileage_by_vtype.append(
-            (result[i][0], result[i][1], result[i][2]*functions.sim_period_to_year(session, scenario)/1000)
+            (result[i][0], result[i][1], result[i][2]*get_simulation_period(session, scenario)[1]/1000)
         )
 
     return annual_mileage_by_vtype
@@ -310,7 +319,7 @@ def get_passenger_mileage(session, scenario):
         Trip.trip_type == "PASSENGER"
     ).one()
 
-    annual_mileage = result[0]*functions.sim_period_to_year(session, scenario)/1000
+    annual_mileage = result[0]*get_simulation_period(session, scenario)[1]/1000
     return annual_mileage
 
 # Calculate the total fleet mileage not grouped by vehicle type.
@@ -341,16 +350,23 @@ def get_driver_hours(
         or_(Event.event_type == 'DRIVING', Event.event_type == 'CHARGING_OPPORTUNITY')
     ).one()
     # Annual driver hours are calculated
-    driver_hours = functions.sim_period_to_year(session = session, scenario = scenario)* result[0].total_seconds() / 3600
+    driver_hours = get_simulation_period(session = session, scenario = scenario)[1]* result[0].total_seconds() / 3600
     return driver_hours
 
 
 # This method returns the simulation duration using the earliest and latest Event.
-# It is used by the functions.sim_period_to_year() function.
 def get_simulation_period(
         session,
         scenario
 ):
+    """
+    This method returns the simulation duration using the time_start of the earliest and the time_end of the latest
+        driving event. Besides that a factor is calculated which can be multiplied by all considered input parameters
+        to obtain the annual quantity of the respective parameter.
+    :param session: A session object.
+    :param scenario: The considered scenario.
+    :return: A tuple of the simulation duration and the factor needed to obtain annual quantities.
+    """
     result = session.query(
         func.min(Event.time_start),
         func.max(Event.time_end)
@@ -358,9 +374,11 @@ def get_simulation_period(
         Event.scenario_id == scenario.id,
         Event.event_type == 'DRIVING'
     ).one()
-    return result[1]-result[0]
+    simulation_period = result[1]-result[0]
+    factor  = 365.25 / (simulation_period.total_seconds()/86400)
+    return (simulation_period, factor)
 
-
+# TODO Remove this function!
 # This is a method, which returns the battery size and its tco parameters by vehicle type.
 def get_battery_size_tco(
         session,

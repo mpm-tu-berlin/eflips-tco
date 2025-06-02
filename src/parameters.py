@@ -86,6 +86,7 @@ insurance = 300
 pef_general = 0.02
 pef_wages = 0.02
 pef_fuel = 0.038
+pef_insurance = 0.1
 
-""" Sumulation period can be manually inserted"""
+""" Simulation period can be manually inserted"""
 sim_period = None

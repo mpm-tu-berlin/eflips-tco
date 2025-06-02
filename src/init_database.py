@@ -1,7 +1,7 @@
 # This script initialises the database at the beginning of the TCO calculation.
 # The input parameters are added into the tco_parameter section for the VehicleType,
 
-from eflips.model import VehicleType, Scenario, BatteryType, ChargingPointType, Process, AssocAreaProcess, Area, Depot, Station
+from eflips.model import VehicleType, Scenario, BatteryType, ChargingPointType, Process, AssocAreaProcess, Area, Depot, Station, Event
 import parameters as p
 
 def init_database(session, scenario):
@@ -185,16 +185,19 @@ def init_database(session, scenario):
         Station
     ).outerjoin(
         Depot, Station.id == Depot.station_id
+    ).join(
+        Event, Event.station_id == Station.id
     ).filter(
         Station.is_electrified == True,
         Station.scenario_id == scenario.id,
-        Depot.station_id == None
+        Depot.station_id == None,
+        Event.event_type == 'CHARGING_OPPORTUNITY'
     ).all()
 
     for station in oc_stations:
         # Add the charging_point_type_id as all oc charging stations are assumed to have a power of 300 kW.
         if station.charging_point_type_id != cpt_id:
-            station.charging_point_type_id = cpt_id
+            station.charging_point_type_id = None#cpt_id
         # Add the tco parameters for the OC station
         if station.tco_parameters != tco_parameters_oc:
             station.tco_parameters = tco_parameters_oc

@@ -15,7 +15,7 @@ import json
 import parameters as p
 import functions as f
 import get_data as gd
-from analysis import plot_scenarios,sensitivity_analysis, plot_efficiency
+from analysis import plot_scenarios,sensitivity_analysis, plot_efficiency, plot_scenario_info
 from init_database import init_database
 
 # Environment variables
@@ -23,13 +23,13 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 #DATABASE_URL = 'postgresql://julian:password@localhost/eflips_tco'
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
 INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
+INCLUDE_DETAILED_ANALYSIS = os.environ.get('INCLUDE_DETAILED_ANALYSIS')
 
 # unzstd --long=31 results_for_tco.sql.zst --stdout | psql eflips_tco um DB neu zu laden. Erst alle Tabellen außer spatial_ref_sys auswählen und löschen (mit entf)!
 
 
 if __name__ == "__main__":
-    #plot_scenarios([1, 3, 4])
-    #plot_efficiency([1,3,4])
+
     #-----------read the input data from a .csv file-----------#
     with open(INPUT_FILE, newline="") as csvfile:
         f.read_csv(csvfile)
@@ -82,9 +82,9 @@ if __name__ == "__main__":
     total_driver_hours = f.calculate_total_driver_hours(driver_hours)
 
     # Some parameters are put into lists to make the calculations easier
-    opex_price_list = [p.staff_cost, p.maint_cost, p.maint_infr_cost, p.fuel_cost, p.insurance, p.taxes]
-    opex_amount_list = [total_driver_hours, annual_fleet_mileage, total_number_charging_slots, total_energy_consumption, total_number_vehicles, total_number_vehicles]
-    opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_general, p.pef_fuel, p.pef_general, p.pef_general]
+    # opex_price_list = [p.staff_cost, p.maint_cost, p.maint_infr_cost, p.fuel_cost, p.insurance, p.taxes]
+    # opex_amount_list = [total_driver_hours, annual_fleet_mileage, total_number_charging_slots, total_energy_consumption, total_number_vehicles, total_number_vehicles]
+    # opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_general, p.pef_fuel, p.pef_general, p.pef_general]
 
     # make a dictionary including all tco parameters needed for the calculation
     capex_input_dict = vehicle_dict | battery_dict | charging_infrastructure_by_type
@@ -114,7 +114,7 @@ if __name__ == "__main__":
         "insurance": {
             "cost": p.insurance,
             "depending_on_scale": total_number_vehicles,
-            "cost_escalation": p.pef_general
+            "cost_escalation": p.pef_insurance
         },
         "taxes": {
             "cost": p.taxes,
@@ -131,12 +131,8 @@ if __name__ == "__main__":
         "annual_fleet_mileage": annual_fleet_mileage
     }
 
-    #sensitivity_analysis(capex_input_dict, opex_input_dict, tco_input_dict,
-    #                     ["procurement", "useful_life", "staff_cost", "maint_cost_vehicles",
-    #                      "maint_cost_infra", "fuel_cost", "interest_rate", "discount_rate"], SCENARIO_ID)
-
     # Calculate the TCO
-    tco_result = f.tco_calculation(capex_input_dict,opex_input_dict,tco_input_dict)
+    tco_result = f.tco_calculation(capex_input_dict,opex_input_dict,tco_input_dict, True)
 
     # TCO over project duration
     tco_pd = tco_result["TCO_over_PD"]
@@ -233,6 +229,8 @@ if __name__ == "__main__":
             "Number of charging stations": total_charging_stations,
             "Total_annual_driver_hours": (round(total_driver_hours, 2), "h p.a."),
             "Total_annual_fleet_mileage": (round(annual_fleet_mileage,2), "km p.a."),
+            "Total_annual_passenger_mileage": (round(passenger_mileage,2), "km p.a."),
+            "Average_energy_consumption": (round(total_energy_consumption / annual_fleet_mileage,2), "kWh/km"),
             "Total_TCO_over_pd": (round(tco_result["TCO_over_PD"], 2), "EUR"),
             "Annual_TCO": (round(tco_result["Annual_TCO"], 2), "EUR p.a."),
             "Specific_TCO": (round(tco_result["Specific_TCO_over_PD"], 2), "EUR/km")
@@ -242,5 +240,13 @@ if __name__ == "__main__":
     # Save the data in the json file.
     with open('results_scn_{}.json'.format(SCENARIO_ID), 'w') as outfile:
         json.dump(data_out, outfile, indent=4)
-        print("\nThe TCO calculation has been completed successfully. The results are saved in 'results.json'.\n"
-              "Before recalculating the TCO, make sure to save your results in a different file as 'results.json' will be overwritten.")
+        print("\nThe TCO calculation has been completed successfully. The results are saved in 'results_scn_{}.json'.\n"
+              "Before recalculating the TCO, make sure to save your results in a different file as 'results_scn_{}.json' will be overwritten.".format(SCENARIO_ID, SCENARIO_ID))
+
+    if INCLUDE_DETAILED_ANALYSIS == True:
+        plot_scenarios([1, 3, 4])
+        plot_efficiency([1,3,4])
+        plot_scenario_info([1,3,4])
+        sensitivity_analysis(capex_input_dict, opex_input_dict, tco_input_dict,
+                            ["procurement", "useful_life", "staff_cost", "maint_cost_vehicles",
+                             "maint_cost_infra", "fuel_cost", "interest_rate", "discount_rate"], SCENARIO_ID)
