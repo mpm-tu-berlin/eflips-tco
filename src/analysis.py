@@ -10,7 +10,7 @@ import warnings as w
 
 
 # Conduct a sensitivity analysis
-def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list, scenario_id):
+def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list, scenario_id, save_fig = False):
     Fig = plt.figure(1, (8, 6))
     ax = Fig.add_subplot(111)
 
@@ -89,11 +89,12 @@ def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list,
     plt.grid()
     plt.tight_layout()
     plt.show()
-    Fig.savefig('sensitivity_analysis_scn_{}.png'.format(scenario_id))
+    if save_fig:
+        Fig.savefig('sensitivity_analysis_scn_{}.png'.format(scenario_id))
 
 
 # Plot the different scenarios in bar charts side by side
-def plot_scenarios(scenarios: [int]):
+def plot_scenarios(scenarios: [int], savefig = False):
     data = {}
     for scenario in scenarios:
         try:
@@ -167,11 +168,12 @@ def plot_scenarios(scenarios: [int]):
     ax.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center', ncol=2)
     plt.tight_layout()
     plt.show()
-    Fig.savefig("tco_plot_scenarios.png")
+    if savefig:
+        Fig.savefig("tco_plot_scenarios.png")
 
 
 # In this method the efficiency of the different scenarios is compared
-def plot_efficiency(scenarios: [int]):
+def plot_efficiency(scenarios: [int], savefig = False):
     Fig = plt.figure(1, (16,8))
     ax = 0
     annual_fleet_mileage=0
@@ -247,4 +249,52 @@ def plot_efficiency(scenarios: [int]):
     #Fig.tight_layout()
     Fig.suptitle("Efficiency of different Scenarios", y = 0.95)
     Fig.show()
-    Fig.savefig("efficiency_scenarios.png")
+    if savefig:
+        Fig.savefig("efficiency_scenarios.png")
+
+
+def plot_scenario_info(scenarios: [int], savefig = False):
+    """
+    This function visualizes some metrics of the calculated scenario and plots it in bar charts in order to allow for
+        more detailed analysis.
+    :param scenarios: A list of the scenarios ids of which the plots should be created.
+    :return: Nothing.
+    """
+    data = {}
+    for scenario in scenarios:
+        try:
+            with open("results_scn_{}.json".format(str(scenario)), 'r') as f:
+                # load data from the json files and append it to the list
+                key = "scenario {}".format(str(scenario))
+                data[key] = json.load(f)
+        except FileNotFoundError:
+            w.warn("The file result_scenario_{}.json was not found and has been disregarded in the plot. "
+                   "Please pay attention to the correct spelling of the file.".format(str(scenario)))
+
+    # Create a figure with fixed size.
+    Fig = plt.figure(1, (16, 5))
+
+    scn = ["Scenario {}".format(str(scenario)) for scenario in scenarios]
+    fleet_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_fleet_mileage"][0] for scenario in scenarios]
+    passenger_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_passenger_mileage"][0] for scenario in scenarios]
+    energy_consumption = [data["scenario {}".format(str(scenario))]["Results"]["Average_energy_consumption"][0] for scenario in scenarios]
+    driver_hours = [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_driver_hours"][0] for scenario in scenarios]
+    titles = ["Annual Fleet Mileage", "Annual Passenger Mileage", "Annual Driver Hours", "Annual Energy Consumption"]
+    plot_data = [fleet_mileage, passenger_mileage, driver_hours, energy_consumption]
+    units = ["Mileage in km", "Mileage in km", "Driver hours in h", "Energy consumption in kWh"]
+
+    color = cm.get_cmap('managua')(np.linspace(0.2, 0.9, len(scenarios)))
+    ax = None
+    for title,plot_d,unit in zip(titles,plot_data,units):
+        ax = Fig.add_subplot(1, 4, (titles.index(title)+1))
+        bar_container = ax.bar(scn, plot_d, color=color, label=scn)
+        ax.set(ylabel = unit, title = title, ylim = (0,(max(plot_d)*1.15)))
+        ax.bar_label(bar_container, label_type='edge', padding=3, fmt='%.2f')
+    handles, labels = ax.get_legend_handles_labels()
+    Fig.legend(handles, labels, bbox_to_anchor=(0.5,0.075), loc='upper center', ncol=len(handles))
+    Fig.suptitle("Scenario Metrics", y=0.95)
+    Fig.tight_layout()
+    Fig.subplots_adjust(bottom = 0.15)
+    Fig.show()
+    if savefig:
+        Fig.savefig("scenario_metrics.png")
