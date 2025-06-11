@@ -144,9 +144,9 @@ def init_database(session, scenario):
     dc_stations = session.query(
         Station
     ).join(
-        Depot, Station.id == Depot.station_id
+        Event, Event.station_id == Station.id
     ).filter(
-        Station.is_electrified == True,
+        Event.event_type == 'CHARGING_DEPOT',
         Station.scenario_id == scenario.id
     ).all()
 
@@ -183,21 +183,17 @@ def init_database(session, scenario):
     # it can also by filtered by the charge_type which is depb or oppb
     oc_stations = session.query(
         Station
-    ).outerjoin(
-        Depot, Station.id == Depot.station_id
     ).join(
         Event, Event.station_id == Station.id
     ).filter(
-        Station.is_electrified == True,
         Station.scenario_id == scenario.id,
-        Depot.station_id == None,
         Event.event_type == 'CHARGING_OPPORTUNITY'
     ).all()
 
     for station in oc_stations:
         # Add the charging_point_type_id as all oc charging stations are assumed to have a power of 300 kW.
         if station.charging_point_type_id != cpt_id:
-            station.charging_point_type_id = None#cpt_id
+            station.charging_point_type_id = cpt_id
         # Add the tco parameters for the OC station
         if station.tco_parameters != tco_parameters_oc:
             station.tco_parameters = tco_parameters_oc

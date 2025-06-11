@@ -45,7 +45,6 @@ if __name__ == "__main__":
         init_database(session, scenario)
 
         # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
-        vehicles_tco = gd.get_vehicle_count_by_type_tco_parameters(session, scenario)
         vehicle_dict = gd.get_vehicle_count_dict(session, scenario)
 
         # Get the number of charging infrastructure and slots by type. There are only depot or
@@ -58,14 +57,10 @@ if __name__ == "__main__":
         # Get the fleet mileage by vehicle type.
         fleet_mileage_by_vehicle_type = gd.get_fleet_mileage_by_vehicle_type(session, scenario)
 
-        # Get the annual fleet mileage in km.
-        annual_fleet_mileage = gd.get_total_fleet_mileage(session, scenario)
-
         # Get the driver hours
         driver_hours = gd.get_driver_hours(session, scenario)
 
         #Get the battery size by bus type including the tco parameters
-        battery_size_by_vehicle_type_tco = gd.get_battery_size_tco(session, scenario)
         battery_dict = gd.get_battery_size_dict(session, scenario)
 
         passenger_mileage = gd.get_passenger_mileage(session, scenario)
@@ -75,16 +70,14 @@ if __name__ == "__main__":
     #----------calculate some additional parameters----------#
 
     # Calculate the total number of vehicles. This is needed in the OPEX calculation.
-    total_number_vehicles = sum(x[2] for x in vehicles_tco)
+    total_number_vehicles = sum(x["number_of_assets"] for key,x in vehicle_dict.items())
     total_number_charging_slots = sum(x["number_of_assets"] for key,x in charging_infrastructure_by_type.items() if key in ["120 kw_Slot INFRASTRUCTURE", "300 kw_Slot INFRASTRUCTURE"])
+
+    # Calculate the annual fleet mileage in km from the vehicle dictionary.
+    annual_fleet_mileage = sum([data["annual_mileage"] for key,data in vehicle_dict.items()])
 
     # Calculate the actual driver hours including a buffer.
     total_driver_hours = f.calculate_total_driver_hours(driver_hours)
-
-    # Some parameters are put into lists to make the calculations easier
-    # opex_price_list = [p.staff_cost, p.maint_cost, p.maint_infr_cost, p.fuel_cost, p.insurance, p.taxes]
-    # opex_amount_list = [total_driver_hours, annual_fleet_mileage, total_number_charging_slots, total_energy_consumption, total_number_vehicles, total_number_vehicles]
-    # opex_pefs_list = [p.pef_wages, p.pef_general, p.pef_general, p.pef_fuel, p.pef_general, p.pef_general]
 
     # make a dictionary including all tco parameters needed for the calculation
     capex_input_dict = vehicle_dict | battery_dict | charging_infrastructure_by_type
@@ -144,50 +137,20 @@ if __name__ == "__main__":
     tco_sp_pd = tco_pd/(annual_fleet_mileage*p.project_duration)
 
     # Print the results on the console if wanted.
-    print('The total cost of ownership over the project duration'
-          ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
-    print('Annual total cost of ownership over the project duration'
-          ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, tco_ann))
-    print('The specific total cost of ownership over the project duration'
-          ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, round(tco_sp_pd,2)))
-    print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
-          'consumption of {} kWh/km.'.format(annual_fleet_mileage, (total_number_vehicles),
-                                             (round(total_energy_consumption / annual_fleet_mileage,2))))
+    # print('The total cost of ownership over the project duration'
+    #       ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
+    # print('Annual total cost of ownership over the project duration'
+    #       ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, tco_ann))
+    # print('The specific total cost of ownership over the project duration'
+    #       ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, round(tco_sp_pd,2)))
+    # print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
+    #       'consumption of {} kWh/km.'.format(annual_fleet_mileage, (total_number_vehicles),
+    #                                          (round(total_energy_consumption / annual_fleet_mileage,2))))
 
     # Plot the specific TCO and save the plot to the repository.
     f.tco_plot(tco_result, SCENARIO_ID)
 
     #-----------Save the output to a JSON file-----------#
-    vehicle_input = []
-    battery_input = []
-    infra_input = {}
-    keys = ["name", "procurement_cost", "useful_life", "cost_escalation"]
-
-    # Get the tco parameters from the vehicles used in this calculation
-    for i in vehicles_tco:
-        vehicle_in={}
-        for key in keys:
-            vehicle_in[key] = i[3].get(key)
-        vehicle_in["number_of_vehicles"] = i[2]
-        vehicle_input.append(vehicle_in)
-
-    # Get the tco parameters for the Batteries used in this calculation
-    for i in battery_size_by_vehicle_type_tco:
-        battery_in = {}
-        for key in keys:
-            battery_in[key] = i[3].get(key)
-        battery_in["battery_size"] = i[2]
-        battery_input.append(battery_in)
-
-    # Get the tco parameters of the infrastructure used in this calculation.
-    for key,data in charging_infrastructure_by_type.items():
-        infra_input[key] ={
-            "procurement_cost": data["procurement_cost"],
-            "useful_life": data["useful_life"],
-            "cost_escalation": data["cost_escalation"],
-            "number_of_infrastructure": data["number_of_assets"],
-        }
-
 
     # Calculate the total nuber of charging slots.
     total_number_charging_slots = {
@@ -207,9 +170,6 @@ if __name__ == "__main__":
     # The dictionary which will be saved to the json file is created.
     data_out = {
         "input_data" : capex_input_dict | {
-            #"Vehicles": vehicle_input,
-            #"Battery": battery_input,
-            #"Charging_Stations": infra_input,
             "Discount_rate": ((p.inflation_rate*100), "% p.a."),
             "Interest_rate": ((p.interest_rate*100), "% p.a."),
             "Project_duration": (p.project_duration, "years"),
@@ -238,12 +198,12 @@ if __name__ == "__main__":
     }
 
     # Save the data in the json file.
-    with open('results_scn_{}.json'.format(SCENARIO_ID), 'w') as outfile:
-        json.dump(data_out, outfile, indent=4)
+    with open('results_scn_{}.json'.format(SCENARIO_ID), 'w') as out_file:
+        json.dump(data_out, out_file, indent=4)
         print("\nThe TCO calculation has been completed successfully. The results are saved in 'results_scn_{}.json'.\n"
               "Before recalculating the TCO, make sure to save your results in a different file as 'results_scn_{}.json' will be overwritten.".format(SCENARIO_ID, SCENARIO_ID))
 
-    if INCLUDE_DETAILED_ANALYSIS == True:
+    if INCLUDE_DETAILED_ANALYSIS == 'True':
         plot_scenarios([1, 3, 4])
         plot_efficiency([1,3,4])
         plot_scenario_info([1,3,4])

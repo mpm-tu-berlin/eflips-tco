@@ -14,37 +14,6 @@ from eflips.eval.output.prepare import power_and_occupancy
 
 
 # Calculating the number of vehicles per vehicle type.
-def get_vehicle_count_by_type_tco_parameters(
-        session,
-        scenario
-):
-    """
-    This method gets the number of vehicles sorted by the vehicle type from the session provided.
-
-    :param session: A session object.
-    :param scenario: A scenario object.
-    :return: A list of tuples including the scenario id of the calculated scenario, the name of the vehicle type and
-        the number of vehicles of the respective vehicle type including the tco_parameters of the respective vehicle type.
-    """
-    # Gets the vehicle types used in the current scenario
-    vehicle_types = scenario.vehicle_types
-
-    # Create empty list in which the number and type of buses are listed.
-    vehicle_number_by_type: list[tuple[int, str, int, dict]] = []
-
-    # Counts all vehicles and saves them in the list including Scenario.id and VehicleType.name
-    for vt in vehicle_types:
-        vt_count = session.query(
-            Vehicle,
-        ).filter(
-            Vehicle.scenario == scenario,
-            Vehicle.vehicle_type_id == vt.id
-        ).count()
-        vehicle_number_by_type.append((scenario.id, vt.name, vt_count, vt.tco_parameters))
-
-    # return the list
-    return vehicle_number_by_type
-
 def get_vehicle_count_dict(
         session,
         scenario
@@ -65,22 +34,6 @@ def get_vehicle_count_dict(
     # The fleet mileage of the respective vehicle type is also included in the dictionary
     fleet_mileage = get_fleet_mileage_by_vehicle_type(session, scenario)
 
-    # Electricity consumption
-    energy_consumption = session.query(
-        func.sum((Event.soc_end - Event.soc_start) * VehicleType.battery_capacity/VehicleType.charging_efficiency),
-        VehicleType.tco_parameters
-    ).select_from(
-        Event
-    ).join(
-        VehicleType, Event.vehicle_type_id == VehicleType.id
-    ).filter(
-        or_(Event.event_type == 'CHARGING_DEPOT',
-            Event.event_type == 'CHARGING_OPPORTUNITY'),
-        Event.scenario_id == scenario.id
-    ).group_by(
-        VehicleType.tco_parameters
-    ).all()
-
     # Write the results in a dictionary and return the dictionary
     result_dict = {}
     for number, tco_parameters in result:
@@ -89,14 +42,9 @@ def get_vehicle_count_dict(
         for scenario_id, name, mileage in fleet_mileage:
             if name == tco_parameters.get('name'):
                 mileage_this_vtype = mileage
+                # Break the loop if the respective tco parameters are found.
                 break
 
-        # Get the energy consumption for this vehicle type
-        energy_consumption_this_vtype = 0
-        for energy, tco in energy_consumption:
-            if tco.get('name') == tco_parameters.get('name'):
-                # Calculate the annual energy consumption
-                energy_consumption_this_vtype = energy * get_simulation_period(session=session, scenario=scenario)[1]
 
         # Add the data to the dictionary
         result_dict[(tco_parameters.get("name")+" VEHICLE")] = {
@@ -105,7 +53,7 @@ def get_vehicle_count_dict(
             "cost_escalation": tco_parameters.get("cost_escalation"),
             "number_of_assets": number,
             "annual_mileage": mileage_this_vtype,
-            "specific_energy_consumption": (energy_consumption_this_vtype/mileage_this_vtype)
+            #"specific_energy_consumption": (energy_consumption_this_vtype/mileage_this_vtype)
         }
     return result_dict
 
@@ -129,7 +77,8 @@ def get_charging_stations_and_slots_tco(
 
     # Charging slots in the depot
     # find the areas in which the charging takes place.
-    areas_tco= (session.query(
+    # This query is the work of my supervisor.
+    areas_tco= session.query(
         Area,
         ChargingPointType
     ).join(
@@ -145,7 +94,7 @@ def get_charging_stations_and_slots_tco(
             )
         )
     ).all()
-            )
+
 
     # Add the number of charging slots and have them sorted by type
     for area in areas_tco:
@@ -178,7 +127,6 @@ def get_charging_stations_and_slots_tco(
     ).all()
 
     # Get the number of OC slots and add all required data to the charging infrastructure dictionary.
-    #start_time = time.time() # measure the runtime
     for station in oc_stations:
         # Get the number of charging slots in the station.
         try:
@@ -200,14 +148,9 @@ def get_charging_stations_and_slots_tco(
         except ValueError:
             w.warn("No charging slots have been found for the opportunity charging stations. They are not considered in the calculation.")
 
-    # runtime test
-    #end_time = time.time()
-    # print the runtime
-    #print("\nRuntime calculation of the number of OC charging slots: {} seconds\n".format((end_time-start_time)))
 
     # Get the charging stations and the respective tco parameters.
     stations = session.query(
-        Station.charge_type,
         func.count(func.distinct(Station.id)),
         Station.tco_parameters
     ).join(
@@ -220,8 +163,7 @@ def get_charging_stations_and_slots_tco(
             Event.event_type == 'CHARGING_DEPOT'
         )
     ).group_by(
-        Station.tco_parameters,
-        Station.charge_type
+        Station.tco_parameters
     ).all()
 
     # Add all stations grouped by type and tco parameters to the infrastructure dictionary.
@@ -230,7 +172,7 @@ def get_charging_stations_and_slots_tco(
             {"procurement_cost": station.tco_parameters.get("procurement_cost"),
              "useful_life": station.tco_parameters.get("useful_life"),
              "cost_escalation": station.tco_parameters.get("cost_escalation"),
-             "number_of_assets": int(station[1])}})
+             "number_of_assets": int(station[0])}})
 
     # return the dictionary
     return charging_infra_dict
@@ -322,20 +264,6 @@ def get_passenger_mileage(session, scenario):
     annual_mileage = result[0]*get_simulation_period(session, scenario)[1]/1000
     return annual_mileage
 
-# Calculate the total fleet mileage not grouped by vehicle type.
-def get_total_fleet_mileage(
-        session,
-        scenario
-):
-
-    # Get the annual fllet mileage grouped by vehicle type.
-    mileage_by_vtype = get_fleet_mileage_by_vehicle_type(session, scenario)
-
-    # Next, the total annual fleet mileage is calculated
-    total_mileage = sum([t[2] for t in mileage_by_vtype])
-
-    return total_mileage
-
 
 # Calculate the annual driver hours.
 def get_driver_hours(
@@ -377,24 +305,6 @@ def get_simulation_period(
     simulation_period = result[1]-result[0]
     factor  = 365.25 / (simulation_period.total_seconds()/86400)
     return (simulation_period, factor)
-
-# TODO Remove this function!
-# This is a method, which returns the battery size and its tco parameters by vehicle type.
-def get_battery_size_tco(
-        session,
-        scenario
-):
-    result = session.query(
-        scenario.id,
-        VehicleType.name,
-        VehicleType.battery_capacity,
-        BatteryType.tco_parameters
-    ).join(
-        BatteryType, BatteryType.id == VehicleType.battery_type_id
-    ).filter(
-        VehicleType.scenario_id == scenario.id
-    ).all()
-    return result
 
 
 # This is a method, which returns the battery size and its tco parameters by vehicle type.

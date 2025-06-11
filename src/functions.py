@@ -175,7 +175,7 @@ def calculate_total_driver_hours(
                     in which the bus is not operated but the driver is still working.
     :return: A tuple of the number of drivers and the total staff cost in one year.
     """
-    # Integers are required, so the % is used
+    # Integers are required, so // is used.
     number_drivers = (driver_hours*(1+buffer))//annual_hours_per_driver
     actual_driver_hours = annual_hours_per_driver * (number_drivers+1)
     return actual_driver_hours

@@ -279,9 +279,9 @@ def plot_scenario_info(scenarios: [int], savefig = False):
     passenger_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_passenger_mileage"][0] for scenario in scenarios]
     energy_consumption = [data["scenario {}".format(str(scenario))]["Results"]["Average_energy_consumption"][0] for scenario in scenarios]
     driver_hours = [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_driver_hours"][0] for scenario in scenarios]
-    titles = ["Annual Fleet Mileage", "Annual Passenger Mileage", "Annual Driver Hours", "Annual Energy Consumption"]
+    titles = ["Annual Fleet Mileage", "Annual Passenger Mileage", "Annual Driver Hours", "Specific Energy Consumption"]
     plot_data = [fleet_mileage, passenger_mileage, driver_hours, energy_consumption]
-    units = ["Mileage in km", "Mileage in km", "Driver hours in h", "Energy consumption in kWh"]
+    units = ["Mileage in km", "Mileage in km", "Driver hours in h", "Energy consumption in kWh/km"]
 
     color = cm.get_cmap('managua')(np.linspace(0.2, 0.9, len(scenarios)))
     ax = None
