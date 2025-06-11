@@ -1,0 +1,19 @@
+[project]
+name = "tco-calculation"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "julian",email = "j.dubiel@campus.tu-berlin.de"}
+]
+readme = "README.md"
+requires-python = ">=3.10, <4.0"
+dependencies = [
+    "eflips-model @ git+https://github.com/mpm-tu-berlin/eflips-model.git@feature/TCO",
+    "eflips-eval @ git+https://github.com/mpm-tu-berlin/eflips-eval.git@feature/eflips-model-upgrade"
+]
+package-mode = false
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
