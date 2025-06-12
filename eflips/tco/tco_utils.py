@@ -1,13 +1,47 @@
 # This file contains methods used in the tco calculation and some additional methods
 
+from dataclasses import dataclass
 import csv,json
+
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
 import numpy as np
 
-import get_data
 import parameters as p
 import warnings as w
+
+
+from enum import Enum, auto
+
+
+class AssetType(Enum):
+    """
+
+    """
+
+    VEHICLE = auto()
+
+    BATTERY = auto()
+
+    INFRASTRUCTURE = auto()
+
+@dataclass
+class Asset:
+    """
+    A general class describing an asset. It is used in the calculation of CAPEX and should include the following parameters:
+
+
+
+
+    """
+    name: str
+    object: "BaseModel"  # This should be a reference to the BaseModel class or any other class that represents the asset.
+    lifetime: int
+    cost_escalation: float
+    total_number: int
+    asset_type: AssetType
+
+
 
 
 
@@ -113,12 +147,12 @@ def total_proc_cef(
     of the procurement cost in case the project duration is not an integer multiple of the useful life of the considered asset.
     This is done according to the reviewed literature by scaling down the present value of the last replacement.
 
-    :param procurement_cost: The procurement cost of the respective asset of which the annuty should be calculated.
+    :param procurement_cost: The procurement cost of the respective asset of which the annuity should be calculated.
     :param useful_life: The useful life of the respective asset, which is also the time over which the asset is financed.
     :param project_duration: The duration of the project as a timeframe that is considered in this calculation.
     :param cost_escalation: The cost escalation factor which represents the annual change of the costs / prices.
     :param interest_rate: The interest rate which is the cost of the capital needed to procure the respective asset.
-    :param net_discount_rate: The discount rate by whixch the cashflows are discounted.
+    :param net_discount_rate: The discount rate by which the cashflows are discounted.
     :return: The total procurement cost of the respective asset over the project duration considering the cost
             escalation and the present value
     """
@@ -226,7 +260,7 @@ def tco_calculation(
                    /(opex_input_dict["maint_cost_vehicles"].get("depending_on_scale")*general_input_dict.get("project_duration")))
         })
 
-        # For vehicles, add the specific tco to the output dictionary.
+        # For vehicles, add the tco to the output dictionary.
         if data.get("annual_mileage") != None:
             # if this is the first entry, add the sepcific_tco_vehicles dictionary
             if result.get("specific_tco_vehicles") == None:
@@ -451,5 +485,5 @@ def tco_plot(result_dict, scenario_id):
 
     ax.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center', ncol = 2)
     plt.tight_layout()
-    plt.show()
+    # plt.show()
     Fig.savefig("tco_plot_scn_{}.png".format(scenario_id))

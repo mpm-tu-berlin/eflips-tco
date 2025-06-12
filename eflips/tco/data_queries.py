@@ -1,15 +1,18 @@
 import datetime
 import warnings
+import parameters as p
 from typing import List, Tuple, Any
 from eflips.model import Vehicle, Station, Event, VehicleType, Route, Trip, BatteryType, Area, Process, \
     ChargingPointType, Depot
 from sqlalchemy import or_, and_
 from sqlalchemy import func
 import numpy as np
-import functions
+from tco_utils import calculate_total_driver_hours
 import time
 import warnings as w
 
+
+from eflips.tco.tco_utils import AssetType, Asset
 from eflips.eval.output.prepare import power_and_occupancy
 
 
@@ -17,7 +20,7 @@ from eflips.eval.output.prepare import power_and_occupancy
 def get_vehicle_count_by_type_tco_parameters(
         session,
         scenario
-):
+) :
     """
     This method gets the number of vehicles sorted by the vehicle type from the session provided.
 
@@ -49,6 +52,8 @@ def get_vehicle_count_dict(
         session,
         scenario
 ):
+
+    # TODO might return a list of Asset
 
     # Get the number of vehicles grouped by vehicle type
     result = session.query(
@@ -433,3 +438,83 @@ def get_battery_size_dict(
             "number_of_assets": number
         }
     return result_dict
+
+def get_capex_input_dict(session, scenario):
+    """
+    This method returns the capex input dictionary, which is used to calculate the TCO.
+    :return: A dictionary including the capex input data.
+    """
+
+    # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
+    vehicle_dict = get_vehicle_count_dict(session, scenario)
+
+    # Get the battery size by bus type including the tco parameters
+    battery_dict = get_battery_size_dict(session, scenario)
+
+    # Get the number of charging infrastructure and slots by type. There are only depot or
+    # terminal stop (opportunity) charging stations.
+    charging_infrastructure_by_type = get_charging_stations_and_slots_tco(session, scenario)
+
+    capex_input_dict = vehicle_dict | battery_dict | charging_infrastructure_by_type
+    return capex_input_dict
+
+def get_opex_input_dict(session, scenario):
+    """
+    This method returns the opex input dictionary, which is used to calculate the TCO.
+    :return: A dictionary including the opex input data.
+    """
+
+    # Get the annual driver hours
+    driver_hours = get_driver_hours(session, scenario)
+    total_driver_hours = calculate_total_driver_hours(driver_hours)
+
+    # Get the total energy consumption
+    total_energy_consumption = get_total_energy_consumption(session, scenario)
+
+    # Get the total fleet mileage
+    annual_fleet_mileage = get_total_fleet_mileage(session, scenario)
+
+    vehicles_tco = get_vehicle_count_by_type_tco_parameters(session, scenario)
+
+    charging_infrastructure_by_type = get_charging_stations_and_slots_tco(session, scenario)
+
+    total_number_vehicles = sum(x[2] for x in vehicles_tco)
+    total_number_charging_slots = sum(x["number_of_assets"] for key,x in charging_infrastructure_by_type.items() if key in ["120 kw_Slot INFRASTRUCTURE", "300 kw_Slot INFRASTRUCTURE"])
+
+
+
+    opex_input_dict = {
+        "staff_cost": {
+            "cost": p.staff_cost,
+            "depending_on_scale": total_driver_hours,
+            "cost_escalation": p.pef_wages
+        },
+        "maint_cost_vehicles": {
+            "cost": p.maint_cost,
+            "depending_on_scale": annual_fleet_mileage,
+            "cost_escalation": p.pef_general
+        },
+        "maint_cost_infra": {
+            "cost": p.maint_infr_cost,
+            "depending_on_scale": total_number_charging_slots,
+            "cost_escalation": p.pef_general
+        },
+        "fuel_cost": {
+            "cost": p.fuel_cost,
+            "depending_on_scale": total_energy_consumption,
+            "cost_escalation": p.pef_fuel
+        },
+        "insurance": {
+            "cost": p.insurance,
+            "depending_on_scale": total_number_vehicles,
+            "cost_escalation": p.pef_insurance
+        },
+        "taxes": {
+            "cost": p.taxes,
+            "depending_on_scale": total_number_vehicles,
+            "cost_escalation": p.pef_general
+        }
+
+    }
+
+    return opex_input_dict

@@ -21,9 +21,12 @@ inflation_rate = 0.025
 
 # asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation)
 Vehicles = [
-    ("Ebusco 3.0 12", 370000.0, 12, cef_vehicles),
-    ("Solaris Urbino 18", 603000.0, 12, cef_vehicles),
-    ("Alexander Dennis Enviro500EV", 700000.0, 12, cef_vehicles)
+    ("Ebusco 3.0 12 large battery", 370000.0, 12, cef_vehicles),
+    ("Ebusco 3.0 12 small battery", 370000.0, 12, cef_vehicles),
+    ("Solaris Urbino 18 large battery", 603000.0, 12, cef_vehicles),
+    ("Solaris Urbino 18 small battery", 603000.0, 12, cef_vehicles),
+    ("Alexander Dennis Enviro500EV large battery", 700000.0, 12, cef_vehicles),
+    ("Alexander Dennis Enviro500EV small battery", 700000.0, 12, cef_vehicles),
 ]
 
 def vehicle_dict():
@@ -35,9 +38,12 @@ def vehicle_dict():
 
 # procurement cost per kWh
 Battery = [
-    ("Ebusco 3.0 12", 350, 6, cef_battery),
-    ("Solaris Urbino 18",  350, 6, cef_battery),
-    ("Alexander Dennis Enviro500EV", 350, 6, cef_battery)
+    ("Ebusco 3.0 12 large battery", 350, 6, cef_battery),
+    ("Ebusco 3.0 12 small battery", 350, 6, cef_battery),
+    ("Solaris Urbino 18 large battery",  350, 6, cef_battery),
+    ("Solaris Urbino 18 small battery",  350, 6, cef_battery),
+    ("Alexander Dennis Enviro500EV large battery", 350, 6, cef_battery),
+    ("Alexander Dennis Enviro500EV small battery", 350, 6, cef_battery),
 ]
 
 def battery_dict():

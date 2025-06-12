@@ -1,0 +1,19 @@
+[project]
+name = "eflips-tco"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "MPM TU Berlin"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "eflips-model @ git+https://github.com/mpm-tu-berlin/eflips-model.git@feature/TCO",
+    "eflips-eval (>=1.7.2,<2.0.0)",
+    "matplotlib (==3.9.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
