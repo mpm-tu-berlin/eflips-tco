@@ -259,12 +259,16 @@ def get_annual_fleet_mileage(session, scenario) -> float:
     :return: The total annual fleet mileage in km.
     """
 
-    return (
-        session.query(func.sum(Route.distance))
+    simulation_period, period_per_year = get_simulation_period(
+        session=session, scenario=scenario
+    )
+
+    total_simulated_mileage = (session.query(func.sum(Route.distance))
         .join(Trip, Route.id == Trip.route_id)
         .filter(Trip.scenario_id == scenario.id)
-        .scalar()
-    )
+        .scalar())
+
+    return total_simulated_mileage * period_per_year / 1000  # Convert to km
 
 
 # Calculate the annual driver hours.
