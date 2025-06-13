@@ -1,7 +1,7 @@
 # This file contains methods used in the tco calculation and some additional methods
 
 from dataclasses import dataclass
-import csv,json
+import csv, json
 
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
@@ -10,46 +10,112 @@ import numpy as np
 import parameters as p
 import warnings as w
 
-
 from enum import Enum, auto
 
 
-class AssetType(Enum):
-    """
+# class AssetType(Enum):
+#     # TODO better name?
+#     """ """
+#
+#     VEHICLE = auto()
+#     "For a vehicle asset, annual mileage is required in the asset parameters."
+#
+#     BATTERY = auto()
+#     "For a battery asset, the battery capacity is required in the asset parameters. The procurement cost is the cost per kWh."
+#
+#     INFRASTRUCTURE = auto()
+#
+#     CHARGING_POINT = auto()
+#
+#
+# @dataclass
+# class CapexItem:
+#     """
+#     A general class describing an asset. It is used in the calculation of CAPEX and should include the following parameters:
+#
+#     """
+#
+#     name: str
+#     useful_life: int
+#     procurement_cost: float
+#     cost_escalation: float
+#     quantity: int
+#     asset_type: AssetType
+#
+#     def calculate_total_procurement_cost(
+#         self,
+#         project_duration: int,
+#         interest_rate: float = 0.04,
+#         net_discount_rate: float = 0.02,
+#     ):
+#         """ """
+#         # Get a list with all procurements taking place over the project duration
+#         all_procurements = replacement_cost(
+#             self.procurement_cost,
+#             self.cost_escalation,
+#             self.useful_life,
+#             project_duration,
+#         )
+#         # List with all annuities
+#         annuities: list[float] = []
+#         annuities_pv: list[float] = []
+#         # Includes the scaled down present value of the last replacement in case the useful life is larger than the
+#         # remaining project duration.
+#         # Calculating all annuities over the project duration and saving them in a list
+#         for new_price, years_after_base_year, partially_used in all_procurements:
+#             annuity_this = annuity(new_price, self.useful_life, interest_rate)
+#             if partially_used:
+#                 # Calculate the present value of the last replacement, scaled for partial use
+#                 annuities_last_replacement = [annuity_this] * self.useful_life
+#                 pv_sum = sum(
+#                     net_present_value(ann, year, net_discount_rate)[0]
+#                     for year, ann in enumerate(annuities_last_replacement)
+#                 )
+#                 fraction_used = (
+#                     project_duration - years_after_base_year
+#                 ) / self.useful_life
+#                 scaled_down_CF = pv_sum * fraction_used
+#                 annuities.append(scaled_down_CF)
+#             else:
+#                 # Add the annuity for each year of the asset's useful life
+#                 annuities.extend([annuity_this] * self.useful_life)
+#
+#         # Calculate the present value of all cashflows at the base year
+#         annuities_pv.extend(
+#             net_present_value(ann, year, net_discount_rate)[0]
+#             for year, ann in enumerate(annuities)
+#         )
+#         # The total procurement cost is returned which is the sum of the annuities adjusted for inflation / discount
+#         # rate.
+#         return sum(annuities_pv)
+#
+#
+# @dataclass
+# class OpexItem:
+#     """
+#     A general class describing an OPEX item. It is used in the calculation of OPEX and should include the following parameters:
+#     """
+#
+#     name: str
+#     unit_cost: float
+#     usage_amount: float
+#     cost_escalation: float
+#
+#     def future_cost(self, years_after_base_year: int):
+#         """
+#         This method calculates the future cost of the OPEX item based on the cost escalation factor and the usage amount.
+#
+#         :param years_after_base_year: The year after the base year in which the cost arises.
+#         :return: The future cost of the OPEX item in the respective year.
+#         """
+#         return (
+#             self.unit_cost
+#             * (1 + self.cost_escalation) ** years_after_base_year
+#             * self.usage_amount
+#         )
 
-    """
 
-    VEHICLE = auto()
-
-    BATTERY = auto()
-
-    INFRASTRUCTURE = auto()
-
-@dataclass
-class Asset:
-    """
-    A general class describing an asset. It is used in the calculation of CAPEX and should include the following parameters:
-
-
-
-
-    """
-    name: str
-    object: "BaseModel"  # This should be a reference to the BaseModel class or any other class that represents the asset.
-    lifetime: int
-    cost_escalation: float
-    total_number: int
-    asset_type: AssetType
-
-
-
-
-
-def net_present_value(
-        cash_flow,
-        years_after_base_year: int,
-        discount_rate = 0.02
-):
+def net_present_value(cash_flow, years_after_base_year: int, discount_rate=0.02):
     """
     This method is used to calculate the net present value of any cash flow, a default value for the discount rate is set.
 
@@ -58,15 +124,11 @@ def net_present_value(
     :param discount_rate: The discount rate by which the cash flow should be discounted.
     :return: A tuple of the present value of the cashflow rounded on 2 decimals and the year after base year in which the cashflow occurs.
     """
-    npv = cash_flow / ((1 + discount_rate)**years_after_base_year)
-    return npv, years_after_base_year
+    npv = cash_flow / ((1 + discount_rate) ** years_after_base_year)
+    return npv
 
 
-def annuity(
-        procurement_cost: float,
-        useful_life: int,
-        interest_rate = 0.04
-):
+def annuity(procurement_cost: float, useful_life: int, interest_rate=0.04):
     """
     This method is used to calculate the annuity of an asset, a default value for the interest rate is set.
 
@@ -75,15 +137,11 @@ def annuity(
     :param interest_rate: The interest rate which is the cost of the capital needed to procure the respective asset.
     :return: The value of the annuity rounded to 2 decimals.
     """
-    ann = procurement_cost*interest_rate / (1-(1+interest_rate)**(-useful_life))
+    ann = procurement_cost * interest_rate / (1 - (1 + interest_rate) ** (-useful_life))
     return ann
 
 
-def future_cost(
-        cef,
-        base_price,
-        years_after_base_year
-):
+def future_cost(cef, base_price, years_after_base_year):
     """
     This method is used to calculate the costs of a certain category at a certain time taking into account the cost
     escalation factors (cef).
@@ -93,16 +151,11 @@ def future_cost(
     :param years_after_base_year: The years after the base year in which the cost arises.
     :return: The cost in the respective year and the year after the base year in which the cost arises.
     """
-    cost = base_price * (1+cef)**years_after_base_year
+    cost = base_price * (1 + cef) ** years_after_base_year
     return cost, years_after_base_year
 
 
-def replacement_cost(
-        base_price,
-        cost_escalation,
-        useful_life,
-        project_duration
-):
+def replacement_cost(base_price, cost_escalation, useful_life, project_duration):
     """
     In this method, the replacement costs of an asset are calculated considering the cost escalation.
 
@@ -117,111 +170,27 @@ def replacement_cost(
     replacement: list[tuple[float, int, bool]] = []
     # get the number of full replacements
     number_of_full_replacements = project_duration // useful_life
-    for i in range(number_of_full_replacements+1):
+    for i in range(number_of_full_replacements + 1):
         # The new price is the baseprice multiplied by the cost escalation factor to the power of the years after the base year.
         new_price = base_price * (1 + cost_escalation) ** (i * useful_life)
         # If the project ends before the useful life if the next replacement, the binary variable is set true in order
         # to account for that in the total_proc_cef function.
-        if (i+1)*useful_life < project_duration:
-            replacement.append((new_price, (i*useful_life), False))
-        elif (i+1)*useful_life == project_duration:
+        years_used = (i + 1) * useful_life
+        if years_used <= project_duration:
             replacement.append((new_price, (i * useful_life), False))
-            break
+            if years_used == project_duration:
+                break
         else:
             # The useful life is shorter than the remaining project duration
-            replacement.append((new_price, (i*useful_life), True))
+            replacement.append((new_price, (i * useful_life), True))
             break
     return replacement
 
 
-def total_proc_cef(
-        procurement_cost: float,
-        useful_life: int,
-        project_duration: int,
-        cost_escalation: float,
-        interest_rate = 0.04,
-        net_discount_rate = 0.02
-):
-    """
-    This method calculates the procurement cost of an asset over its lifetime while also accounting for partial consideration
-    of the procurement cost in case the project duration is not an integer multiple of the useful life of the considered asset.
-    This is done according to the reviewed literature by scaling down the present value of the last replacement.
-
-    :param procurement_cost: The procurement cost of the respective asset of which the annuity should be calculated.
-    :param useful_life: The useful life of the respective asset, which is also the time over which the asset is financed.
-    :param project_duration: The duration of the project as a timeframe that is considered in this calculation.
-    :param cost_escalation: The cost escalation factor which represents the annual change of the costs / prices.
-    :param interest_rate: The interest rate which is the cost of the capital needed to procure the respective asset.
-    :param net_discount_rate: The discount rate by which the cashflows are discounted.
-    :return: The total procurement cost of the respective asset over the project duration considering the cost
-            escalation and the present value
-    """
-    # Get a list with all procurements taking place over the project duration
-    all_procurements = replacement_cost(procurement_cost, cost_escalation, useful_life, project_duration)
-    # List with all annuities
-    annuities: list[float] = []
-    annuities_pv: list[float] = []
-    # Includes the scaled down present value of the last replacement in case the useful life is larger than the
-    # remaining project duration.
-    scaled_down_CF = 0
-    # Calculating all annuities over the project duration and saving them in a list
-    for i in range(len(all_procurements)):
-        annuity_this = annuity(all_procurements[i][0], useful_life, interest_rate)
-        if all_procurements[i][2]:
-            # As the approach of scaling down the cashflows is selected here, the present value of the last replacement
-            # is calculated and then multiplied by a factor resulting from the remaining project duration and the
-            # useful life of the respective asset.
-            # A new list is used in order to calculate the present value of the last replacement.
-            annuities_last_replacement = []
-            # Filling the list with all annuities over the useful life of the asset.
-            for j in range(useful_life):
-                annuities_last_replacement.append(annuity_this)
-            # The present value of the annuities is calculated and then scaled down.
-            scaled_down_CF = (sum(net_present_value(annuities_last_replacement[x], x, net_discount_rate)[0]
-                                  for x in range(len(annuities_last_replacement))) * (project_duration - all_procurements[i][1]) / useful_life)
-            # The scaled down cashflow is then appended to the list of annuities, so the present value at
-            # the time of the base year can be calculated along with the other annuities.
-            annuities.append(scaled_down_CF)
-        else:
-            #For every year the respective annuity is appended to the list.
-            for j in range(useful_life):
-                annuities.append(annuity_this)
-    # The present value of all cashflows at the base year is calculated.
-    for i in range(len(annuities)):
-        annuities_pv.append(net_present_value(annuities[i], i, net_discount_rate)[0])
-    # The total procurement cost is returned which is the sum of the annuities adjusted for inflation / discount rate.
-    return sum(annuities_pv)
-
-
-def calculate_total_driver_hours(
-        driver_hours,
-        annual_hours_per_driver = 1600,
-        buffer = 0.1
-):
-    """
-    This method calculates the total driver hours based on the number of drivers required for the operation of the buses.
-    The buffer variable is the amount of hours added to the pure driving time and accounts for the time the drivers work
-    but are not operating the bus.
-
-    :param driver_hours: The amount of time the buses are operated by a driver.
-    :param annual_hours_per_driver: The time a driver work over the course of one year.
-    :param buffer: An additional factor which raises the total driver hours in order to account for any additional time
-                    in which the bus is not operated but the driver is still working.
-    :return: A tuple of the number of drivers and the total staff cost in one year.
-    """
-    # Integers are required, so the % is used
-    number_drivers = (driver_hours*(1+buffer))//annual_hours_per_driver
-    actual_driver_hours = annual_hours_per_driver * (number_drivers+1)
-    return actual_driver_hours
 
 
 # calculate the TCO
-def tco_calculation(
-        capex_input_dict,
-        opex_input_dict,
-        general_input_dict,
-        save_result = False
-):
+def tco_calculation(capex_input, opex_input, general_input_dict, save_result=False):
     """
     This method is used to calculate the total cost of ownership based on the data provided through the three
     dictionaries.
@@ -233,96 +202,105 @@ def tco_calculation(
     :return: A dictionary containing the specific tco by vehicle, the total TCO over the project duration,
              the annual TCO and the specific TCO over the project duration
     """
-    result = {
-        "tco_by_type": {}
-    }
-
+    result = {"tco_by_type": {}}
 
     # ----------Total CAPEX----------#
 
     total_capex = 0
 
     # Calculate the total cost for each asset over the project duration.
-    for name, data in capex_input_dict.items():
+    for capex_item in capex_input:
 
         # Calculate the procurement cost for the respective asset including replacement.
-        procurement_per_asset_type = total_proc_cef(data["procurement_cost"],
-                                                    data["useful_life"],
-                                                    general_input_dict["project_duration"],
-                                                    data["cost_escalation"],
-                                                    general_input_dict["interest_rate"],
-                                                    general_input_dict["discount_rate"])
+        # TODO general_input_dict can be replaced after adding tco parameters to the scenario object.
+        procurement_per_asset_type = capex_item.calculate_total_procurement_cost(
+            project_duration=general_input_dict["project_duration"],
+            interest_rate=general_input_dict["interest_rate"],
+            net_discount_rate=general_input_dict["discount_rate"],
+        )
         # Add the cost of this asset to the CAPEX section of the TCO.
-        total_capex += procurement_per_asset_type * data["number_of_assets"]
+        total_capex += procurement_per_asset_type * capex_item.quantity
         # Add this cost component to the result dict for detailed analysis fo the tco
-        result["tco_by_type"].update({
-            name: (procurement_per_asset_type*data["number_of_assets"]
-                   /(opex_input_dict["maint_cost_vehicles"].get("depending_on_scale")*general_input_dict.get("project_duration")))
-        })
 
-        # For vehicles, add the tco to the output dictionary.
-        if data.get("annual_mileage") != None:
-            # if this is the first entry, add the sepcific_tco_vehicles dictionary
-            if result.get("specific_tco_vehicles") == None:
-                result["specific_tco_vehicles"] = {
-                name: round(((procurement_per_asset_type * data.get("number_of_assets"))/
-                                (data.get("annual_mileage")*general_input_dict.get("project_duration"))),2)
-            }
-            # otherwise add the specific tco to the respective dictionary
-            else:
-                result["specific_tco_vehicles"].update({
-                    name: round(((procurement_per_asset_type * data.get("number_of_assets"))/
-                           (data.get("annual_mileage")*general_input_dict.get("project_duration"))),2)
-                })
+        # # TODO refactor or delete this
+        # result["tco_by_type"].update({
+        #     asset.name: (procurement_per_asset_type * asset.total_number
+        #            / (opex_input["maint_cost_vehicles"].get("depending_on_scale") * general_input_dict.get(
+        #                 "project_duration")))
+        # })
+        #
+        # # For vehicles, add the tco to the output dictionary.
+        # if data.get("annual_mileage") != None:
+        #     # if this is the first entry, add the sepcific_tco_vehicles dictionary
+        #     if result.get("specific_tco_vehicles") == None:
+        #         result["specific_tco_vehicles"] = {
+        #             name: round(((procurement_per_asset_type * data.get("number_of_assets")) /
+        #                          (data.get("annual_mileage") * general_input_dict.get("project_duration"))), 2)
+        #         }
+        #     # otherwise add the specific tco to the respective dictionary
+        #     else:
+        #         result["specific_tco_vehicles"].update({
+        #             name: round(((procurement_per_asset_type * data.get("number_of_assets")) /
+        #                          (data.get("annual_mileage") * general_input_dict.get("project_duration"))), 2)
+        #         })
 
     # ----------Total OPEX----------#
 
     total_opex = 0
 
     # Calculate the OPEX for each category over the whole project duration.
-    for name, data in opex_input_dict.items():
+    for opex_item in opex_input:
 
-        total_opex_of_type=0
+        total_opex_of_type = 0
 
         # Calculate the OPEX for each year.
         for year in range(general_input_dict["project_duration"]):
-            opex_cost_in_respective_year = future_cost(data["cost_escalation"], data["cost"], year)[0]*data["depending_on_scale"]
-            total_opex_of_type += net_present_value(opex_cost_in_respective_year, year, general_input_dict["discount_rate"])[0]
+            opex_cost_in_respective_year = opex_item.future_cost(year)
+            total_opex_of_type += net_present_value(
+                opex_cost_in_respective_year, year, general_input_dict["discount_rate"]
+            )[0]
         total_opex += total_opex_of_type
 
         # Save the total OPEX for each category in the result dictionary.
-        result["tco_by_type"].update(
-            {
-                name: (total_opex_of_type/(opex_input_dict["maint_cost_vehicles"].get("depending_on_scale")*general_input_dict.get("project_duration")))
-            }
-        )
+        # result["tco_by_type"].update(
+        #     {
+        #         name: (total_opex_of_type / (
+        #                     opex_input_dict["maint_cost_vehicles"].get("depending_on_scale") * general_input_dict.get(
+        #                 "project_duration")))
+        #     }
+        # )
 
     # ----------Calculation of three kinds of TCO----------#
 
     # TCO over project duration
-    result["TCO_over_PD"] = total_capex+total_opex
+    result["TCO_over_PD"] = total_capex + total_opex
 
     # Annual TCO
-    result["Annual_TCO"] = result["TCO_over_PD"]/general_input_dict["project_duration"]
+    result["Annual_TCO"] = (
+        result["TCO_over_PD"] / general_input_dict["project_duration"]
+    )
 
     # Specific TCO over project duration
-    result["Specific_TCO_over_PD"] = result["Annual_TCO"]/opex_input_dict["maint_cost_vehicles"]["depending_on_scale"]
+    result["Specific_TCO_over_PD"] = (
+        result["Annual_TCO"]
+        / opex_input_dict["maint_cost_vehicles"]["depending_on_scale"]
+    )
 
     # save the mileage used to calculate the specific TCO
     result["Annual_fleet_mileage"] = general_input_dict["annual_fleet_mileage"]
-    result["Annual_passenger_mileage"]=general_input_dict["passenger_mileage"]
+    result["Annual_passenger_mileage"] = general_input_dict["passenger_mileage"]
 
     if save_result:
-        with open("result_scenario_{}.json".format(str(general_input_dict["scenario"])),"w") as file:
-            json.dump(result, file, indent = 4)
+        with open(
+            "result_scenario_{}.json".format(str(general_input_dict["scenario"])), "w"
+        ) as file:
+            json.dump(result, file, indent=4)
 
     return result
 
 
 # get the input data from the input CSV file.
-def read_csv(
-        csvfile
-):
+def read_csv(csvfile):
     """
     This method reads the csv file for the input data and changes the parameters in parameters.py to match the given
     values from the CSV file. If some values are not given, the default values from parameters.py are used instead.
@@ -330,16 +308,28 @@ def read_csv(
     :param csvfile: The CSV file which contains the input parameters.
     :return: None, this function purely changes the input parameters in parameters.py.
     """
-    input_list = list(csv.reader(csvfile, delimiter=';'))
+    input_list = list(csv.reader(csvfile, delimiter=";"))
     # Read the data for vehicle type and infrastructure type
     for i in range(len(input_list)):
         # Create lists in the format of the tuples in parameters.Vehicles, parameters.Batteries and parameters.Charging_Stations
-        vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"),
-                   cast_value(input_list[i][2], "int"), p.cef_vehicles]
-        battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"),
-                   cast_value(input_list[i][5], "int"), p.cef_battery]
-        infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"),
-                 cast_value(input_list[i][8], "int"), p.cef_infra]
+        vehicle = [
+            str(input_list[i][0]),
+            cast_value(input_list[i][1], "float"),
+            cast_value(input_list[i][2], "int"),
+            p.cef_vehicles,
+        ]
+        battery = [
+            str(input_list[i][3]),
+            cast_value(input_list[i][4], "float"),
+            cast_value(input_list[i][5], "int"),
+            p.cef_battery,
+        ]
+        infra = [
+            str(input_list[i][6]),
+            cast_value(input_list[i][7], "float"),
+            cast_value(input_list[i][8], "int"),
+            p.cef_infra,
+        ]
 
         # Create lists with the names of vehicles, batteries and charging infrastructure in order to check, whether the
         # new entry needs to be appended to the list or a default value needs to be replaced
@@ -350,7 +340,11 @@ def read_csv(
         # Append new vehicle types (including battery) to the list or replace the values if this type is already in the list.
         if vehicle[0] in vehicle_names:
             if vehicle[0] not in battery_names:
-                raise ValueError("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
+                raise ValueError(
+                    "Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(
+                        vehicle[0], vehicle[0]
+                    )
+                )
             idx = vehicle_names.index(vehicle[0])
             p.Vehicles[idx] = tuple(vehicle)
             idx_battery = battery_names.index(battery[0])
@@ -374,31 +368,51 @@ def read_csv(
                 p.Charging_Stations.append(infra)
 
     # Replace the other parameters if necessary or use the default values in case there is no data provided.
-    p.project_duration = set_default_value(input_list[1][9], p.project_duration, "int", "project duration")
-    p.inflation_rate = set_default_value(input_list[1][10], p.inflation_rate, "float", "inflation rate")
-    p.interest_rate = set_default_value(input_list[1][11], p.interest_rate, "float", "interest rate")
-    p.staff_cost = set_default_value(input_list[1][12], p.staff_cost, "float", "staff cost")
-    p.fuel_cost = set_default_value(input_list[1][13], p.fuel_cost, "float", "fuel cost")
-    p.maint_cost = set_default_value(input_list[1][14], p.maint_cost, "float", "maintenance cost")
-    p.maint_infr_cost = set_default_value(input_list[1][15], p.maint_infr_cost, "float", "maintainance cost infrastructure")
+    p.project_duration = set_default_value(
+        input_list[1][9], p.project_duration, "int", "project duration"
+    )
+    p.inflation_rate = set_default_value(
+        input_list[1][10], p.inflation_rate, "float", "inflation rate"
+    )
+    p.interest_rate = set_default_value(
+        input_list[1][11], p.interest_rate, "float", "interest rate"
+    )
+    p.staff_cost = set_default_value(
+        input_list[1][12], p.staff_cost, "float", "staff cost"
+    )
+    p.fuel_cost = set_default_value(
+        input_list[1][13], p.fuel_cost, "float", "fuel cost"
+    )
+    p.maint_cost = set_default_value(
+        input_list[1][14], p.maint_cost, "float", "maintenance cost"
+    )
+    p.maint_infr_cost = set_default_value(
+        input_list[1][15],
+        p.maint_infr_cost,
+        "float",
+        "maintainance cost infrastructure",
+    )
     p.taxes = set_default_value(input_list[1][16], p.taxes, "float", "taxes")
-    p.insurance = set_default_value(input_list[1][17], p.insurance, "float", "insurance")
+    p.insurance = set_default_value(
+        input_list[1][17], p.insurance, "float", "insurance"
+    )
 
     # Decide whether cost escalation is considered or not. The default procedure is to consider cost escalation.
     if input_list[0][17] == "" or input_list[1][18] == "TRUE":
         pass
     else:
-        p.pef_fuel = p.pef_wages = p.pef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
+        p.pef_fuel = p.pef_wages = p.pef_general = p.cef_vehicles = p.cef_battery = (
+            p.cef_infra
+        ) = 0
 
     # Print a message for the user
-    print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
+    print(
+        "The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct."
+    )
 
 
 # Cast a value to the required datatype and return None in case of a ValueError
-def cast_value(
-        value,
-        datatype
-):
+def cast_value(value, datatype):
     """
     This method casts the given value to the given datatype. If the cast is not possible due to a ValueError, None is returned.
     It is used in the read_csv method.
@@ -421,14 +435,13 @@ def cast_value(
 
 
 # Set the values in parameters.py to their default value and issue a warning in case there is no value provided.
-def set_default_value(
-        input_value,
-        default_value,
-        data_type,
-        parameter_type
-):
+def set_default_value(input_value, default_value, data_type, parameter_type):
     if cast_value(input_value, data_type) is None:
-        w.warn("There was no value provided for the parameter {}. The default value {} is used.".format(parameter_type, default_value))
+        w.warn(
+            "There was no value provided for the parameter {}. The default value {} is used.".format(
+                parameter_type, default_value
+            )
+        )
         return default_value
     else:
         return cast_value(input_value, data_type)
@@ -445,10 +458,16 @@ def tco_plot(result_dict, scenario_id):
         "Infrastructure": 0,
         "Vehicle": 0,
         "Battery": 0,
-        "Other Cost": (result_dict["tco_by_type"]["insurance"]+result_dict["tco_by_type"]["taxes"]),
+        "Other Cost": (
+            result_dict["tco_by_type"]["insurance"]
+            + result_dict["tco_by_type"]["taxes"]
+        ),
         "Vehicle Maintenance Cost": result_dict["tco_by_type"]["maint_cost_vehicles"],
-        "Infrastructure Maintenance Cost": result_dict["tco_by_type"]["maint_cost_infra"],"Staff Cost": result_dict["tco_by_type"]["staff_cost"],
-        "Energy Cost": result_dict["tco_by_type"]["fuel_cost"]
+        "Infrastructure Maintenance Cost": result_dict["tco_by_type"][
+            "maint_cost_infra"
+        ],
+        "Staff Cost": result_dict["tco_by_type"]["staff_cost"],
+        "Energy Cost": result_dict["tco_by_type"]["fuel_cost"],
     }
     for name, data in result_dict["tco_by_type"].items():
         if "INFRASTRUCTURE" in name:
@@ -459,31 +478,47 @@ def tco_plot(result_dict, scenario_id):
             tco_data["Battery"] += data
 
     # Create a figure with fixed size.
-    Fig = plt.figure(1, (5,8))
+    Fig = plt.figure(1, (5, 8))
     ax = Fig.add_subplot(1, 1, 1)
 
     # Use colormaps to choose the colors for the plot
-    color = cm.get_cmap('managua')(np.linspace(0,1,len(tco_data.keys())))
+    color = cm.get_cmap("managua")(np.linspace(0, 1, len(tco_data.keys())))
 
     # Bottom of the stacked bars.
     bottom = 0
     # Create the stacked bar plot
     for color, [tco_categories, data] in zip(color, tco_data.items()):
-        p = ax.bar('specific TCO', data, width = 0.05, label=tco_categories, bottom=bottom, color=color)
+        p = ax.bar(
+            "specific TCO",
+            data,
+            width=0.05,
+            label=tco_categories,
+            bottom=bottom,
+            color=color,
+        )
         bottom += data
-        ax.bar_label(p, label_type='center',padding=3, fmt='%.2f')
+        ax.bar_label(p, label_type="center", padding=3, fmt="%.2f")
 
     # write the total tco over the bar
-    ax.text(0, (bottom+0.1),s = str("{:.2f}".format(round(bottom,2))), ha = 'center', va = 'bottom', fontweight = 'bold')
+    ax.text(
+        0,
+        (bottom + 0.1),
+        s=str("{:.2f}".format(round(bottom, 2))),
+        ha="center",
+        va="bottom",
+        fontweight="bold",
+    )
 
     # Set limit on y axis
-    ax.set_ylim(top = bottom+0.5)
+    ax.set_ylim(top=bottom + 0.5)
     # set title
-    ax.set_title('Specific Total Cost of Ownership in Scenario {}'.format(str(scenario_id)))
+    ax.set_title(
+        "Specific Total Cost of Ownership in Scenario {}".format(str(scenario_id))
+    )
     # set the y-axis label
-    ax.set_ylabel('TCO in €/km')
+    ax.set_ylabel("TCO in €/km")
 
-    ax.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center', ncol = 2)
+    ax.legend(bbox_to_anchor=(0.5, -0.05), loc="upper center", ncol=2)
     plt.tight_layout()
     # plt.show()
     Fig.savefig("tco_plot_scn_{}.png".format(scenario_id))

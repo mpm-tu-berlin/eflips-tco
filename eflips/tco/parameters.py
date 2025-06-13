@@ -29,6 +29,7 @@ Vehicles = [
     ("Alexander Dennis Enviro500EV small battery", 700000.0, 12, cef_vehicles),
 ]
 
+
 def vehicle_dict():
     Vehicle_dict = {
         name: {"procurement_cost": proc, "useful_life": uf, "cost_escalation": cef}
@@ -36,15 +37,17 @@ def vehicle_dict():
     }
     return Vehicle_dict
 
+
 # procurement cost per kWh
 Battery = [
     ("Ebusco 3.0 12 large battery", 350, 6, cef_battery),
     ("Ebusco 3.0 12 small battery", 350, 6, cef_battery),
-    ("Solaris Urbino 18 large battery",  350, 6, cef_battery),
-    ("Solaris Urbino 18 small battery",  350, 6, cef_battery),
+    ("Solaris Urbino 18 large battery", 350, 6, cef_battery),
+    ("Solaris Urbino 18 small battery", 350, 6, cef_battery),
     ("Alexander Dennis Enviro500EV large battery", 350, 6, cef_battery),
     ("Alexander Dennis Enviro500EV small battery", 350, 6, cef_battery),
 ]
+
 
 def battery_dict():
     Battery_dict = {
@@ -53,12 +56,14 @@ def battery_dict():
     }
     return Battery_dict
 
+
 Charging_Stations = [
-    ("OPPORTUNITY Station", 500000, 20, cef_infra), # OPPORTUNITY charging station
+    ("OPPORTUNITY Station", 500000, 20, cef_infra),  # OPPORTUNITY charging station
     ("300 kw_Slot", 275000, 20, cef_infra),  # OPPORTUNITY charging slot
-    ("DEPOT Station", 3400000, 20, cef_infra), # DEPOT charging station
-    ("120 kw_Slot", 100000, 20, cef_infra) # DEPOT charging slot
+    ("DEPOT Station", 3400000, 20, cef_infra),  # DEPOT charging station
+    ("120 kw_Slot", 100000, 20, cef_infra),  # DEPOT charging slot
 ]
+
 
 def charging_stations_dict():
     Charging_Stations_dict = {
@@ -67,16 +72,17 @@ def charging_stations_dict():
     }
     return Charging_Stations_dict
 
+
 """ 
 OPEX
 """
 
 """ hourly staff cost in EUR per driver """
-staff_cost = 21.875 # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
+staff_cost = 21.875  # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
 annual_staff_cost = 35000
 
 """ Fuel cost in EUR per unit fuel """
-fuel_cost = 0.1794 #electricity cost
+fuel_cost = 0.1794  # electricity cost
 
 """ Maintenance cost in EUR per km """
 maint_cost = 0.35
