@@ -54,11 +54,10 @@ class TCOCalculator:
                 try:
                     self.opex_items = self._load_opex_items_from_db(session, self.capex_items, annual_fleet_mileage)
                 except Exception as e:
-                    # raise ValueError(
-                    #     "Error loading OPEX items from the database. Please make sure the tco-related data exists in "
-                    #     "the database, or use your own list of opex items."
-                    # ) from e
-                    raise e
+                    raise ValueError(
+                        "Error loading OPEX items from the database. Please make sure the tco-related data exists in "
+                        "the database, or use your own list of opex items."
+                    ) from e
             else:
                 self.opex_items = opex_items
 
