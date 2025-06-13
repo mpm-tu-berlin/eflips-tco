@@ -3,8 +3,8 @@ from enum import Enum, auto
 
 from eflips.tco.tco_utils import replacement_cost, annuity, net_present_value
 class CapexItemType(Enum):
-    # TODO better name?
-    """ """
+    """
+    """
 
     VEHICLE = auto()
     "For a vehicle asset, annual mileage is required in the asset parameters."
