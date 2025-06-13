@@ -1,6 +1,5 @@
 import datetime
 import warnings
-import parameters as p
 from typing import List, Tuple, Any, Dict
 from eflips.model import (
     Vehicle,
@@ -217,38 +216,6 @@ def get_total_energy_consumption(session, scenario):
 
 
 # Get the fleet mileage by vehicle type in km.
-def get_fleet_mileage_by_vehicle_type(session, scenario) -> Dict[VehicleType, float]:
-    """
-    This method gets the annual fleet mileage sorted by vehicle type from the session provided.
-
-    :param session: A session object.
-    :param scenario: A scenario object.
-    :return: A list of tuples including the scenario id, the name of the respective vehicle type and the total fleet mileage of the respective vehicle type in km.
-    """
-
-    # Get the sum of route distances grouped by VehicleType
-    list_vt_mileage = (
-        session.query(VehicleType, func.sum(Route.distance))
-        .join(Trip, Route.id == Trip.route_id)
-        .join(Event, Event.trip_id == Trip.id)
-        .join(VehicleType, Event.vehicle_type_id == VehicleType.id)
-        .filter(Event.scenario_id == scenario.id)
-        .group_by(VehicleType.id)
-        .all()
-    )
-
-    # Calculate the total mileage by vehicle type over one year.
-    annual_mileage_by_vtype: Dict[VehicleType, float] = {}
-    for vehicle_type, mileage in list_vt_mileage:
-        # Add the respective tuple to the list.
-        simulation_period, period_per_year = get_simulation_period(
-            session=session, scenario=scenario
-        )
-        annual_mileage_by_vtype[vehicle_type] = (
-            mileage * period_per_year / 1000
-        )  # Convert to km
-
-    return annual_mileage_by_vtype
 
 def get_annual_fleet_mileage(session, scenario) -> float:
     """
@@ -318,108 +285,3 @@ def get_simulation_period(session, scenario):
     periods_per_year = 365.25 / (simulation_period.total_seconds() / 86400)
     return simulation_period, periods_per_year
 
-
-# This is a method, which returns the battery size and its tco parameters by vehicle type.
-
-
-def get_capex_input(session, scenario):
-    """
-    This method returns the capex input dictionary, which is used to calculate the TCO.
-    :return: A dictionary including the capex input data.
-    """
-
-    # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
-    assets_vehicle = load_capex_items_vehicle(session, scenario)
-
-    # Get the battery size by bus type including the tco parameters
-    assets_battery = load_capex_items_battery(session, scenario)
-
-    # Get the number of charging infrastructure and slots by type. There are only depot or
-    # terminal stop (opportunity) charging stations.
-    assets_infrastructure = load_capex_items_infrastructure(session, scenario)
-
-    capex_input = (
-        list(assets_vehicle) + list(assets_battery) + list(assets_infrastructure)
-    )
-    return capex_input
-
-
-def get_opex_input(session, scenario, capex_input: List[CapexItem]):
-    """
-    This method returns the opex input dictionary, which is used to calculate the TCO.
-    :return: A dictionary including the opex input data.
-    """
-
-    list_opex_items = []
-
-    # Get the annual driver hours
-
-    total_driver_hours = calculate_total_driver_hours(session, scenario)
-    staff_cost = OpexItem(
-        name="Staff Cost",
-        unit_cost=p.staff_cost,
-        usage_amount=total_driver_hours,
-        cost_escalation=p.pef_wages,
-    )
-    list_opex_items.append(staff_cost)
-
-    # Get the total energy consumption
-    total_energy_consumption = get_total_energy_consumption(session, scenario)
-    # TODO maybe change it to energy_cost
-    fuel_cost = OpexItem(
-        name="Fuel Cost",
-        unit_cost=p.fuel_cost,
-        usage_amount=total_energy_consumption,
-        cost_escalation=p.pef_fuel,
-    )
-    list_opex_items.append(fuel_cost)
-
-    # Get the total fleet mileage
-
-    annual_fleet_mileage = sum(
-        vt_mileage
-        for vt, vt_mileage in get_fleet_mileage_by_vehicle_type(
-            session, scenario
-        ).items()
-    )
-    maint_cost_vehicles = OpexItem(
-        name="Maintenance Cost Vehicles",
-        unit_cost=p.maint_cost,
-        usage_amount=annual_fleet_mileage,
-        cost_escalation=p.pef_general,
-    )
-    list_opex_items.append(maint_cost_vehicles)
-
-    total_number_vehicles = sum(
-        asset.quantity for asset in capex_input if asset.asset_type == CapexItemType.VEHICLE
-    )
-    insurance = OpexItem(
-        name="Insurance",
-        unit_cost=p.insurance,
-        usage_amount=total_number_vehicles,
-        cost_escalation=p.pef_insurance,
-    )
-    list_opex_items.append(insurance)
-
-    taxes = OpexItem(
-        name="Taxes",
-        unit_cost=p.taxes,
-        usage_amount=total_number_vehicles,
-        cost_escalation=p.pef_general,
-    )
-    list_opex_items.append(taxes)
-
-    total_number_charging_points = sum(
-        asset.quantity
-        for asset in capex_input
-        if asset.asset_type == CapexItemType.INFRASTRUCTURE
-    )
-    maint_cost_infra = OpexItem(
-        name="Maintenance Cost Infrastructure",
-        unit_cost=p.maint_infr_cost,
-        usage_amount=total_number_charging_points,
-        cost_escalation=p.pef_general,
-    )
-    list_opex_items.append(maint_cost_infra)
-
-    return list_opex_items
