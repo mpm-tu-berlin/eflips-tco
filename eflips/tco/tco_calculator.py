@@ -126,7 +126,7 @@ class TCOCalculator:
         # TODO do we need this? maybe later
 
         # Specific TCO over project duration
-        self.tco_per_distance = self.tco_over_project_duration / self.annual_fleet_mileage
+        self.tco_per_distance = self.tco_over_project_duration / (self.annual_fleet_mileage * self.project_duration)
 
         dict_tco_by_type = self.tco_by_type
         self.tco_by_type = pd.DataFrame.from_dict(
@@ -134,8 +134,7 @@ class TCOCalculator:
         ).reset_index()
         # divide the costs by the annual fleet mileage to get the specific costs
         self.tco_by_type["Specific Cost"] = (
-            self.tco_by_type["Cost"] / self.annual_fleet_mileage
-        )
+            self.tco_by_type["Cost"] / self.annual_fleet_mileage * self.project_duration)
 
 
 
