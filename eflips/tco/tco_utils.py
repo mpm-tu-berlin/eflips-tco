@@ -12,7 +12,6 @@ import warnings as w
 from enum import Enum, auto
 
 
-
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate=0.02):
     """
     This method is used to calculate the net present value of any cash flow, a default value for the discount rate is set.
@@ -83,7 +82,6 @@ def replacement_cost(base_price, cost_escalation, useful_life, project_duration)
             replacement.append((new_price, (i * useful_life), True))
             break
     return replacement
-
 
 
 def tco_plot(result_dict, scenario_id):

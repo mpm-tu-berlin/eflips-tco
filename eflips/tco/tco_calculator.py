@@ -1,19 +1,9 @@
 from eflips.model import (
     Scenario,
-    VehicleType,
-    BatteryType,
-    ChargingPointType,
-    Route,
-    Trip,
-    Vehicle,
-    Area,
-    Depot,
-    Station,
-    Event,
 )
 
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine
 
 from eflips.tco.data_queries import (
     load_capex_items_vehicle,
@@ -24,7 +14,7 @@ from eflips.tco.data_queries import (
     get_total_energy_consumption,
 )
 
-from eflips.tco.tco_utils import replacement_cost, annuity, net_present_value
+from eflips.tco.tco_utils import net_present_value
 from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType
 
 import pandas as pd
@@ -157,18 +147,12 @@ class TCOCalculator:
         )
 
         # Create a DataFrame from the list of items and costs
-        self.tco_by_item = pd.DataFrame({
-            "Item": list_of_items,
-            "Cost": list_of_costs
-        })
+        self.tco_by_item = pd.DataFrame({"Item": list_of_items, "Cost": list_of_costs})
 
-
-        self.tco_by_item["Specific Cost"] = (
-                self.tco_by_item["Cost"] / (self.annual_fleet_mileage * self.project_duration)
+        self.tco_by_item["Specific Cost"] = self.tco_by_item["Cost"] / (
+            self.annual_fleet_mileage * self.project_duration
         )
-        self.tco_by_item["type"] = self.tco_by_item["Item"].apply(
-            lambda x: x.type.name)
-
+        self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
 
     def visualize(self):
         """
@@ -176,7 +160,6 @@ class TCOCalculator:
         """
 
         tco_by_type = {}
-
 
         # TODO sort that into capex and opex items
         types = set(self.tco_by_item["type"].values)
@@ -187,6 +170,7 @@ class TCOCalculator:
 
         # Plot a stacked bar chart of the TCO by type
         import matplotlib.pyplot as plt
+
         fig, ax = plt.subplots()
         bottom = 0
         for item_type, cost in tco_by_type.items():
@@ -203,8 +187,13 @@ class TCOCalculator:
         ax.set_title("Total Cost of Ownership by Type")
         ax.legend()
         plt.savefig("tco_by_type.png")
+        # dump the tco_by_type to a json file
+        import json
 
-
+        with open("tco_by_type.json", "w") as f:
+            json.dump(tco_by_type, f, indent=4)
+        # Save the DataFrame to a CSV file
+        self.tco_by_item.to_csv("tco_by_item.csv", index=False)
 
     def _load_capex_items_from_db(self, session):
         # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
@@ -317,7 +306,7 @@ class TCOCalculator:
         total_number_charging_points = sum(
             asset.quantity
             for asset in capex_input
-            if asset.type == CapexItemType.INFRASTRUCTURE
+            if asset.type == CapexItemType.CHARGING_POINT
         )
         maint_cost_infra = OpexItem(
             name="Maintenance Cost Infrastructure",

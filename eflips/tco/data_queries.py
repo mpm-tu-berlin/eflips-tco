@@ -9,14 +9,19 @@ from eflips.model import (
     Route,
     Trip,
     BatteryType,
+    ChargeType,
+    Scenario,
+    ChargingPointType,
     Area,
     Process,
-    ChargingPointType,
-    Depot,
-    ChargeType,
+    Event,
+    EventType, Depot
 )
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, distinct
 from sqlalchemy import func
+
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
 import numpy as np
 import time
 import warnings as w
@@ -287,3 +292,118 @@ def get_simulation_period(session, scenario):
     simulation_period = result[1] - result[0]
     periods_per_year = 365.25 / (simulation_period.total_seconds() / 86400)
     return simulation_period, periods_per_year
+
+
+def init_tco_parameters(
+    scenario_id,
+    database_url,
+    vehicle_types,
+    battery_types,
+    charging_point_types,
+    charging_infrastructure,
+):
+    """
+    Initialize the TCO parameters for the given scenario in the database.
+    :param scenario_id: The ID of the scenario to initialize.
+    :param
+
+    """
+
+    session = Session(create_engine(database_url))
+    with session:
+        # scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+        # Add tco parameters to vehicle types
+        for vt_id, vt_tco_parameters in vehicle_types.items():
+            vt = session.query(VehicleType).filter(VehicleType.id == vt_id).one()
+            if vt.tco_parameters is None:
+                vt.tco_parameters = vt_tco_parameters
+
+        # Add tco parameters to battery types
+        for bt_id, bt_tco_parameters in battery_types.items():
+            bt = session.query(BatteryType).filter(BatteryType.id == bt_id).one()
+            if bt.tco_parameters is None:
+                bt.tco_parameters = bt_tco_parameters
+
+        # Add tco parameters to charging point types
+        charging_point_types_db = (
+            session.query(ChargingPointType)
+            .filter(ChargingPointType.scenario_id == scenario_id)
+            .all()
+        )
+        if len(charging_point_types_db) == 0:
+            # Create charging point type for depot charging
+            # TODO this only works if there is one type for depot charging and one for opportunity charging
+            for charging_point_type, cp_tco_parameters in charging_point_types.items():
+                match charging_point_type:
+                    case "depot":
+                        cp_d = ChargingPointType(
+                            name="Depot Charging",
+                            scenario_id=scenario_id,
+                            tco_parameters=cp_tco_parameters,
+                        )
+                        # add this to areas
+                        charging_areas = session.query(Area).filter(
+                            Area.processes.any(Process.electric_power.isnot(None)),
+                            Area.scenario_id == scenario_id
+                        )
+                        for area in charging_areas:
+                            area.charging_point_type = cp_d
+
+                    case "opportunity":
+                        cp_o = ChargingPointType(
+                            name="Opportunity Charging",
+                            scenario_id=scenario_id,
+                            tco_parameters=cp_tco_parameters,
+                        )
+                        # add this to stations
+                        charging_station_ids = session.query(distinct(Event.station_id)).filter(
+                            Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                            Event.scenario_id == scenario_id
+                        ).all()
+                        for station_id in charging_station_ids:
+                            station = session.query(Station).filter(
+                                Station.id == station_id[0]
+                            ).one()
+                            station.charging_point_type = cp_o
+                    case _:
+                        raise ValueError(
+                            f"Unknown charging point type: {charging_point_type}"
+                        )
+
+        # else:
+        #     # In this case, the connection between charging point and areas or stations is already established.
+        #     for cp, cp_tco_parameters in charging_point_types.items():
+        #         charging_point = session.query(ChargingPointType).filter(
+        #             ChargingPointType.id == cp).one()
+        #         if charging_point.tco_parameters is None:
+        #             charging_point.tco_parameters = cp_tco_parameters
+
+        # Add tco parameters to charging infrastructure
+        for infra_type, infra_tco_parameters in charging_infrastructure.items():
+            match infra_type:
+                case "station":
+                    charging_station_ids = session.query(distinct(Event.station_id)).filter(
+                        Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                        Event.scenario_id == scenario_id
+                    ).all()
+                    for station_id in charging_station_ids:
+                        station = session.query(Station).filter(
+                            Station.id == station_id[0]
+                        ).one()
+                        if station.tco_parameters is None:
+                            station.tco_parameters = infra_tco_parameters
+                case "depot":
+                    depot_stations = session.query(Depot.station_id).filter(
+                        Depot.scenario_id == scenario_id
+                    ).all()
+                    for station_id in depot_stations:
+                        station = session.query(Station).filter(
+                            Station.id == station_id[0]
+                        ).one()
+                        if station.tco_parameters is None:
+                            station.tco_parameters = infra_tco_parameters
+                case _:
+                    raise ValueError(f"Unknown infrastructure type: {infra_type}")
+
+        session.commit()
+
