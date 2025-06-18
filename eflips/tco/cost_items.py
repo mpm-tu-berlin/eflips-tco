@@ -2,15 +2,18 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from eflips.tco.tco_utils import replacement_cost, annuity, net_present_value
+
+
 class CapexItemType(Enum):
-    """
-    """
+    """ """
 
     VEHICLE = auto()
     "For a vehicle asset, annual mileage is required in the asset parameters."
 
     BATTERY = auto()
-    "For a battery asset, the battery capacity is required in the asset parameters. The procurement cost is the cost per kWh."
+
+    "For a battery asset, the battery capacity is required in the asset parameters. The procurement cost is the cost "
+    "per kWh."
 
     INFRASTRUCTURE = auto()
 
@@ -25,17 +28,29 @@ class CapexItem:
     """
 
     name: str
+    type: CapexItemType
     useful_life: int
     procurement_cost: float
     cost_escalation: float
     quantity: int
-    asset_type: CapexItemType
+
+    @staticmethod
+    def from_dict(item_dict: dict) -> "CapexItem":
+        """
+        Create a CapexItem instance from a dictionary.
+
+        :param item_dict: Dictionary containing the parameters of the CapexItem.
+        :return: An instance of CapexItem.
+        """
+        raise NotImplementedError(
+            "This method should be implemented in subclasses to create a CapexItem from a dictionary."
+        )
 
     def calculate_total_procurement_cost(
-            self,
-            project_duration: int,
-            interest_rate: float = 0.04,
-            net_discount_rate: float = 0.02,
+        self,
+        project_duration: int,
+        interest_rate: float = 0.04,
+        net_discount_rate: float = 0.02,
     ):
         """ """
         # Get a list with all procurements taking place over the project duration
@@ -61,8 +76,8 @@ class CapexItem:
                     for year, ann in enumerate(annuities_last_replacement)
                 )
                 fraction_used = (
-                                        project_duration - years_after_base_year
-                                ) / self.useful_life
+                    project_duration - years_after_base_year
+                ) / self.useful_life
                 scaled_down_CF = pv_sum * fraction_used
                 annuities.append(scaled_down_CF)
             else:
@@ -79,6 +94,24 @@ class CapexItem:
         return sum(annuities_pv)
 
 
+class OpexItemType(Enum):
+    """
+    Enum for different types of OPEX items.
+    """
+
+    ENERGY = auto()
+    "For fuel costs, the unit cost is the cost per unit of fuel."
+
+    MAINTENANCE = auto()
+    "For maintenance costs, the unit cost is the cost per maintenance event."
+
+    STAFF = auto()
+    "For staff costs, the unit cost is the cost per staff member per year."
+
+    OTHER = auto()
+    "For other OPEX items, the unit cost is defined by the specific item."
+
+
 @dataclass
 class OpexItem:
     """
@@ -86,9 +119,16 @@ class OpexItem:
     """
 
     name: str
+    type: OpexItemType
     unit_cost: float
     usage_amount: float
     cost_escalation: float
+
+    @staticmethod
+    def from_dict(item_dict: dict) -> "OpexItem":
+        raise NotImplementedError(
+            "This method should be implemented in subclasses to create an OpexItem from a dictionary."
+        )
 
     def future_cost(self, years_after_base_year: int):
         """
@@ -98,7 +138,7 @@ class OpexItem:
         :return: The future cost of the OPEX item in the respective year.
         """
         return (
-                self.unit_cost
-                * (1 + self.cost_escalation) ** years_after_base_year
-                * self.usage_amount
+            self.unit_cost
+            * (1 + self.cost_escalation) ** years_after_base_year
+            * self.usage_amount
         )

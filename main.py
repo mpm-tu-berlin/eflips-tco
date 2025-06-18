@@ -27,8 +27,12 @@ from eflips.tco.tco_calculator import TCOCalculator
 
 if __name__ == "__main__":
 
-    tco_calculator_s1 = TCOCalculator(scenario_id=SCENARIO_ID, database_url=DATABASE_URL)
+
+    tco_calculator_s1 = TCOCalculator(
+        scenario_id=SCENARIO_ID, database_url=DATABASE_URL
+    )
+
     tco_calculator_s1.calculate()
 
     print(tco_calculator_s1.tco_per_distance)
-
+    tco_calculator_s1.visualize()

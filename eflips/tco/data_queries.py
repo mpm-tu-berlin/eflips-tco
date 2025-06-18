@@ -41,7 +41,7 @@ def load_capex_items_vehicle(session, scenario):
         # Get the total annual mileage for the respective vehicle type
         asset_this_vtype = CapexItem(
             name=vehicle_type.name,
-            asset_type=CapexItemType.VEHICLE,
+            type=CapexItemType.VEHICLE,
             useful_life=tco_parameters["useful_life"],
             procurement_cost=tco_parameters["procurement_cost"],
             cost_escalation=tco_parameters["cost_escalation"],
@@ -77,7 +77,7 @@ def load_capex_items_battery(session, scenario):
     for vehicle_type, battery_capacity, tco_battery, number in list_vt_battery:
         asset_this_battery = CapexItem(
             name="Battery type " + str(vehicle_type.battery_type_id),
-            asset_type=CapexItemType.BATTERY,
+            type=CapexItemType.BATTERY,
             useful_life=tco_battery["useful_life"],
             procurement_cost=tco_battery["procurement_cost"] * battery_capacity,
             cost_escalation=tco_battery["cost_escalation"],
@@ -131,7 +131,7 @@ def load_capex_items_infrastructure(session, scenario):
 
         asset_charging_point_type = CapexItem(
             name=charging_point_type.tco_parameters["name"],
-            asset_type=CapexItemType.CHARGING_POINT,
+            type=CapexItemType.CHARGING_POINT,
             useful_life=charging_point_type.tco_parameters["useful_life"],
             procurement_cost=charging_point_type.tco_parameters["procurement_cost"],
             cost_escalation=charging_point_type.tco_parameters["cost_escalation"],
@@ -163,7 +163,7 @@ def load_capex_items_infrastructure(session, scenario):
     for station_charge_type, station_count, tco_parameters in stations:
         asset_station = CapexItem(
             name="Station" if station_charge_type == ChargeType.oppb else "Depot",
-            asset_type=CapexItemType.INFRASTRUCTURE,
+            type=CapexItemType.INFRASTRUCTURE,
             useful_life=tco_parameters["useful_life"],
             procurement_cost=tco_parameters["procurement_cost"],
             cost_escalation=tco_parameters["cost_escalation"],
@@ -217,6 +217,7 @@ def get_total_energy_consumption(session, scenario):
 
 # Get the fleet mileage by vehicle type in km.
 
+
 def get_annual_fleet_mileage(session, scenario) -> float:
     """
     This method gets the annual fleet mileage from the session provided.
@@ -230,10 +231,12 @@ def get_annual_fleet_mileage(session, scenario) -> float:
         session=session, scenario=scenario
     )
 
-    total_simulated_mileage = (session.query(func.sum(Route.distance))
+    total_simulated_mileage = (
+        session.query(func.sum(Route.distance))
         .join(Trip, Route.id == Trip.route_id)
         .filter(Trip.scenario_id == scenario.id)
-        .scalar())
+        .scalar()
+    )
 
     return total_simulated_mileage * period_per_year / 1000  # Convert to km
 
@@ -284,4 +287,3 @@ def get_simulation_period(session, scenario):
     simulation_period = result[1] - result[0]
     periods_per_year = 365.25 / (simulation_period.total_seconds() / 86400)
     return simulation_period, periods_per_year
-
