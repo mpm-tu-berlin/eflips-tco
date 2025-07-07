@@ -25,7 +25,7 @@ def init_database(session, scenario):
                 ". \n Please also make sure that the spelling of the vehicle type in your input file is correct."
             )
 
-        # Only change the database if the same input Parameters are not already in it.
+        # Only change the database if the same input parameters are not already in it.
         if vtype.tco_parameters == tco_parameters:
             pass
         else:
