@@ -3,27 +3,31 @@ The parameters are defined in the beginning of the code, later,
 they should be put in by feeding a list into the program.
 """
 
-""" project duration in years """
+#project duration in years
 project_duration = 12
 
-# Some cost escalation factors.
-cef_vehicles = 0.025
-cef_battery = -0.03
-cef_infra = 0.02
 
-"""
-CAPEX
-"""
+#CAPEX
 
-""" Annual interest and inflation rate """
+# Cost escalation factors (cef). There should be multiple CEFS for different categories.
+cef_general = 0.02
+cef_wages = 0.025
+cef_fuel = 0.007
+cef_insurance = 0.02
+cef_vehicles = 0.02
+cef_battery = -0.0
+cef_infra = 0.0
+
+# Annual interest and discount rate.
 interest_rate = 0.04
-inflation_rate = 0.025
+discount_rate = 0.02
 
-# asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation)
+# asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation).
+# The contents are loaded from the input file.
 Vehicles = [
-    ("Ebusco 3.0 12", 370000.0, 12, cef_vehicles),
-    ("Solaris Urbino 18", 603000.0, 12, cef_vehicles),
-    ("Alexander Dennis Enviro500EV", 700000.0, 12, cef_vehicles)
+    #(0,"Ebusco 3.0 12", 400000.0, 12, cef_vehicles),
+    #(0,"Solaris Urbino 18", 603000.0, 12, cef_vehicles),
+    #(0,"Alexander Dennis Enviro500EV", 850000.0, 12, cef_vehicles)
 ]
 
 def vehicle_dict():
@@ -35,9 +39,9 @@ def vehicle_dict():
 
 # procurement cost per kWh
 Battery = [
-    ("Ebusco 3.0 12", 350, 6, cef_battery),
-    ("Solaris Urbino 18",  350, 6, cef_battery),
-    ("Alexander Dennis Enviro500EV", 350, 6, cef_battery)
+    #(0,"Ebusco 3.0 12", 350, 6, cef_battery),
+    #(0,"Solaris Urbino 18",  350, 6, cef_battery),
+    #(0,"Alexander Dennis Enviro500EV", 350, 6, cef_battery)
 ]
 
 def battery_dict():
@@ -61,32 +65,26 @@ def charging_stations_dict():
     }
     return Charging_Stations_dict
 
-""" 
-OPEX
-"""
 
-""" hourly staff cost in EUR per driver """
-staff_cost = 21.875 # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
-annual_staff_cost = 35000
+#OPEX
 
-""" Fuel cost in EUR per unit fuel """
+
+# hourly staff cost in EUR per driver
+staff_cost = 25
+#annual_staff_cost = 35000
+
+# Fuel cost in EUR per unit fuel
 fuel_cost = 0.1794 #electricity cost
 
-""" Maintenance cost in EUR per km """
+# Maintenance cost in EUR per km
 maint_cost = 0.35
 
-"""Maintenance cost infrastructure per year and charging slot."""
+# Maintenance cost infrastructure per year and charging slot.
 maint_infr_cost = 1000
 
-""" Taxes and insurance cost in EUR per year and bus"""
-taxes = 400.50
-insurance = 300
+#Taxes and insurance cost in EUR per year and bus.
+taxes = 278
+insurance = 9697
 
-""" Cost escalation factors (cef / pef). There should be multiple CEFS for different categories."""
-pef_general = 0.02
-pef_wages = 0.02
-pef_fuel = 0.038
-pef_insurance = 0.1
-
-""" Simulation period can be manually inserted"""
+# Simulation period is obtained in get_data.py.
 sim_period = None
