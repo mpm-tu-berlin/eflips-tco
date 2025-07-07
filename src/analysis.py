@@ -10,7 +10,8 @@ import warnings as w
 
 
 # Conduct a sensitivity analysis
-def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list, scenario_id, save_fig = False):
+def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list, scenario_id, save_fig = True):
+    plt.rcParams.update({'font.size': 14})
     Fig = plt.figure(1, (8, 6))
     ax = Fig.add_subplot(111)
 
@@ -83,14 +84,14 @@ def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list,
 
     plt.ylabel("Change of specific TCO in %")
     plt.xlabel("Change of parameter in %")
-    plt.legend(bbox_to_anchor=(0.5, -0.11), loc='upper center', ncol=2)
+    plt.legend(bbox_to_anchor=(0.5, -0.15), loc='upper center', ncol=2)
     plt.title("Sensitivity Analysis of the specific TCO in Scenario {}".format(scenario_id))
     plt.axis('equal')
     plt.grid()
     plt.tight_layout()
     plt.show()
     if save_fig:
-        Fig.savefig('sensitivity_analysis_scn_{}.png'.format(scenario_id))
+        Fig.savefig('sensitivity_analysis_scn_{}.png'.format(scenario_id), bbox_inches="tight")
 
 
 # Plot the different scenarios in bar charts side by side
@@ -107,17 +108,17 @@ def plot_scenarios(scenarios: [int], savefig = False):
                     "Please pay attention to the correct spelling of the file.".format(str(scenario)))
 
     # Create a figure with fixed size.
-    Fig = plt.figure(1, (10,10))
+    Fig = plt.figure(1, (8,6))
     ax = Fig.add_subplot(1,1,1)
 
     plot_data = {
         "Infrastructure": [],
         "Vehicle": [],
         "Battery": [],
-        "Other Cost": [],
         "Vehicle Maintenance Cost": [],
         "Infrastructure Maintenance Cost": [],
         "Staff Cost": [],
+        "Other Cost": [],
         "Energy Cost": []
         }
 
@@ -127,10 +128,10 @@ def plot_scenarios(scenarios: [int], savefig = False):
             "Infrastructure": 0,
             "Vehicle": 0,
             "Battery": 0,
-            "Other Cost": (result_dict["tco_by_type"]["insurance"] + result_dict["tco_by_type"]["taxes"]),
             "Vehicle Maintenance Cost": result_dict["tco_by_type"]["maint_cost_vehicles"],
             "Infrastructure Maintenance Cost": result_dict["tco_by_type"]["maint_cost_infra"],
             "Staff Cost": result_dict["tco_by_type"]["staff_cost"],
+            "Other Cost": (result_dict["tco_by_type"]["insurance"] + result_dict["tco_by_type"]["taxes"]),
             "Energy Cost": result_dict["tco_by_type"]["fuel_cost"]
         }
         for name, data in result_dict["tco_by_type"].items():
@@ -152,29 +153,35 @@ def plot_scenarios(scenarios: [int], savefig = False):
         p = ax.bar(name, data, label=tco_categories, bottom=bottom, color=color)
         bottom += data
         ax.bar_label(p, label_type='center', padding=3, fmt='%.2f')
+        ax.bar_label(p,labels = [f'{x:.2f}' if x!=0 else '' for x in data], label_type='center', padding=3, size = 14)
+    # change size of text on x-axis.
+    ax.tick_params(axis='x', labelsize=14)
+
     # write the total tco over the bar
     x = np.arange(len(scenarios))
     for i, total in enumerate(bottom):
         ax.text(x[i], (total + 0.1), s=str("{:.2f}".format(np.round(total, 2))), ha='center', va='bottom',
-                    fontweight='bold')
+                    fontweight='bold', size = 14)
 
     # Set limit on y axis
-    ax.set_ylim(top= np.max(bottom) + 0.5)
+    ax.set_ylim(top= 4.75)#np.max(bottom) + 0.5)
     # set title
-    ax.set_title('Specific Total Cost of Ownership')
+    ax.set_title('Specific Total Cost of Ownership', size = 16)
     # set the y-axis label
-    ax.set_ylabel('TCO in €/km')
+    ax.set_ylabel('TCO in €/km', size = 14)
 
-    ax.legend(bbox_to_anchor=(0.5, -0.05), loc='upper center', ncol=2)
+    Fig.legend(bbox_to_anchor=(0.5, 0.0), loc='upper center', ncol = 3, fontsize = 13 )
     plt.tight_layout()
     plt.show()
     if savefig:
-        Fig.savefig("tco_plot_scenarios.png")
+        Fig.savefig("tco_plot_scenarios.png", bbox_inches="tight")
 
 
 # In this method the efficiency of the different scenarios is compared
-def plot_efficiency(scenarios: [int], savefig = False):
-    Fig = plt.figure(1, (16,8))
+def plot_efficiency(scenarios: [int], savefig = True):
+
+    plt.rcParams.update({'font.size': 15})
+    Fig = plt.figure(1, (20,7))
     ax = 0
     annual_fleet_mileage=0
     passenger_mileage=0
@@ -191,10 +198,10 @@ def plot_efficiency(scenarios: [int], savefig = False):
                 "Infrastructure": [],
                 "Vehicle": [],
                 "Battery": [],
-                "Other Cost": [],
                 "Vehicle Maintenance Cost": [],
                 "Infrastructure Maintenance Cost": [],
                 "Staff Cost": [],
+                "Other Cost": [],
                 "Energy Cost": []
             }
             # save the data in a suitable dictionary.
@@ -202,10 +209,10 @@ def plot_efficiency(scenarios: [int], savefig = False):
                 "Infrastructure": 0,
                 "Vehicle": 0,
                 "Battery": 0,
-                "Other Cost": (result_dict["tco_by_type"]["insurance"] + result_dict["tco_by_type"]["taxes"]),
                 "Vehicle Maintenance Cost": result_dict["tco_by_type"]["maint_cost_vehicles"],
                 "Infrastructure Maintenance Cost": result_dict["tco_by_type"]["maint_cost_infra"],
                 "Staff Cost": result_dict["tco_by_type"]["staff_cost"],
+                "Other Cost": (result_dict["tco_by_type"]["insurance"] + result_dict["tco_by_type"]["taxes"]),
                 "Energy Cost": result_dict["tco_by_type"]["fuel_cost"]
             }
             # Add the data for the assets
@@ -225,19 +232,21 @@ def plot_efficiency(scenarios: [int], savefig = False):
             # Use colormaps to choose the colors for the plot
             color = cm.get_cmap('managua')(np.linspace(0, 1, len(plot_data.keys())))
 
-            name = ["TCO per km", "TCO per passenger km"]
+            name = ["TCO p. km", "TCO p. passenger km"]
+            scn_names = ['EBU', 'DCO', 'SBTD', 'Diesel']
             bottom = np.zeros(len(name))
             for color, [tco_categories, data] in zip(color, plot_data.items()):
                 p = ax.bar(name, data, label=tco_categories, bottom=bottom, color=color)
                 bottom += data
-                ax.bar_label(p, label_type='center', padding=3, fmt='%.2f')
+                ax.bar_label(p, labels=[f'{x:.2f}' if x != 0 else '' for x in data], label_type='center', padding=3,
+                             size=14)
             # write the total tco over the bar
             x = np.arange(len(scenarios))
             for j, total in enumerate(bottom):
                 ax.text(x[j], (total + 0.1), s=str("{:.2f}".format(np.round(total, 2))), ha='center', va='bottom',
                         fontweight='bold')
             # Set limit on y axis
-            ax.set_ylim(top=np.max(bottom) + 0.5)
+            ax.set_ylim(top=5.25)#np.max(bottom) + 0.5)
             # set title
             ax.set_title('Efficiency Scenario {}'.format(scenarios[i]))
             # set the y-axis label
@@ -245,15 +254,15 @@ def plot_efficiency(scenarios: [int], savefig = False):
             #plt.tight_layout()
 
     handles, labels = ax.get_legend_handles_labels()
-    Fig.legend(handles, labels, bbox_to_anchor=(0.5, 0.05), loc='upper center', ncol=len(handles))
+    Fig.legend(handles, labels, bbox_to_anchor=(0.5, 0.05), loc='upper center', ncol=len(handles)//2)
     #Fig.tight_layout()
     Fig.suptitle("Efficiency of different Scenarios", y = 0.95)
     Fig.show()
     if savefig:
-        Fig.savefig("efficiency_scenarios.png")
+        Fig.savefig("efficiency_scenarios.svg",bbox_inches="tight")
 
 
-def plot_scenario_info(scenarios: [int], savefig = False):
+def plot_scenario_info(scenarios: [int], savefig = True):
     """
     This function visualizes some metrics of the calculated scenario and plots it in bar charts in order to allow for
         more detailed analysis.
