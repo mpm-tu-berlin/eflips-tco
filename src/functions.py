@@ -341,7 +341,7 @@ def read_csv(
 
     # Replace the other parameters if necessary or use the default values in case there is no data provided.
     p.project_duration = set_default_value(input_list[1][9], p.project_duration, "int", "project duration")
-    p.inflation_rate = set_default_value(input_list[1][10], p.inflation_rate, "float", "inflation rate")
+    p.discount_rate = set_default_value(input_list[1][10], p.discount_rate, "float", "discount rate")
     p.interest_rate = set_default_value(input_list[1][11], p.interest_rate, "float", "interest rate")
     p.staff_cost = set_default_value(input_list[1][12], p.staff_cost, "float", "staff cost")
     p.fuel_cost = set_default_value(input_list[1][13], p.fuel_cost, "float", "fuel cost")
@@ -354,7 +354,7 @@ def read_csv(
     if input_list[0][17] == "" or input_list[1][18] == "TRUE":
         pass
     else:
-        p.pef_fuel = p.pef_wages = p.pef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
+        p.cef_fuel = p.cef_wages = p.cef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
 
     # Print a message for the user
     print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
@@ -398,6 +398,127 @@ def set_default_value(
         return default_value
     else:
         return cast_value(input_value, data_type)
+
+# get the input data from the input CSV file.
+def read_json(
+        jsonfile
+):
+    """
+    This method reads the json file for the input data and changes the parameters in parameters.py to match the given
+    values from the json file. If some values are not given, the default values from parameters.py are used instead.
+
+    :param jsonfile: The json file which contains the input parameters.
+    :return: None, this function purely changes the input parameters in parameters.py.
+    """
+
+    with open("input_tco.json", 'r') as f:
+        # load data from the json file.
+        input_dict = json.load(f)
+
+    # Create lists with the names of vehicles, batteries and charging infrastructure in order to check, whether the
+    # new entry needs to be appended to the list or a default value needs to be replaced
+
+    # Add the tco data for the vehicles and batteries
+    for key in input_dict["vehicles"].keys():
+        # Only consider the entry if the key can be casted to an integer.
+        try:
+            # Make a list with the tco parameters and the vehicle id for each vehicle and append it to the respective
+            # list in parameters.py.
+            vehicle_data = [input_dict["vehicles"][key]["name"], # vehicle name
+                            float(input_dict["vehicles"][key]["procurement_cost"]), # procurement cost
+                            int(input_dict["vehicles"][key]["useful_life"]), # useful life
+                            p.cef_vehicles] # cost escalation
+                            #int(key)]  # vehicle id
+            p.Vehicles.append(vehicle_data)
+            # Repeat the same for each battery
+            battery_data = [input_dict["vehicles"][key]["name"], # vehicle name
+                            float(input_dict["vehicles"][key]["battery_procurement"]), # procurement cost
+                            int(input_dict["vehicles"][key]["battery_useful_life"]), # useful life
+                            p.cef_battery] # cost escalation
+                            #int(key)] # vehicle id
+            p.Battery.append(battery_data)
+        except Exception:
+            pass
+
+    # Add the tco data for the infrastructure
+    infra_names = [x[0] for x in p.Charging_Stations]
+    for key in input_dict["infrastructure"].keys():
+        # Only consider full dictionaries.
+        try:
+            infrastructure_data = [key,
+                                   float(input_dict["infrastructure"][key]["procurement_cost"]),
+                                   int(input_dict["infrastructure"][key]["useful_life"]),
+                                   p.cef_infra]
+            if key in infra_names:
+                idx = infra_names.index(key)
+                p.Charging_Stations[idx] = infrastructure_data
+            else:
+                p.Charging_Stations.append(infrastructure_data)
+        except Exception:
+            pass
+
+    # Add the remaining tco parameters to the parameters.py file.
+
+    # Replace the other parameters if necessary or use the default values in case there is no data provided.
+    p.project_duration = set_default_value(
+        input_dict["general_input"].get("Project_duration")[0],
+        p.project_duration,
+        "int",
+        "project duration"
+    )
+    p.discount_rate = set_default_value(
+        input_dict["general_input"].get("Discount_rate")[0]/100,
+        p.discount_rate,
+        "float",
+        "discount rate")
+    p.interest_rate = set_default_value(
+        input_dict["general_input"].get("Interest_rate")[0]/100,
+        p.interest_rate,
+        "float",
+        "interest rate")
+    p.staff_cost = set_default_value(
+        input_dict["general_input"].get("Staff_cost")[0],
+        p.staff_cost,
+        "float",
+        "staff cost")
+    p.fuel_cost = set_default_value(
+        input_dict["general_input"].get("Fuel_cost")[0],
+        p.fuel_cost,
+        "float",
+        "fuel cost")
+    p.maint_cost = set_default_value(
+        input_dict["general_input"].get("Maintenance_cost_vehicles")[0],
+        p.maint_cost,
+        "float",
+        "maintenance cost")
+    p.maint_infr_cost = set_default_value(
+        input_dict["general_input"].get("Maintenance_cost_infrastructure")[0],
+        p.maint_infr_cost,
+        "float",
+        "maintainance cost infrastructure")
+    p.taxes = set_default_value(
+        input_dict["general_input"].get("Taxes")[0],
+        p.taxes,
+        "float",
+        "taxes")
+    p.insurance = set_default_value(
+        input_dict["general_input"].get("Insurance")[0],
+        p.insurance,
+        "float",
+        "insurance")
+
+    # Decide whether cost escalation is considered or not. The default procedure is to consider cost escalation.
+    if (input_dict["general_input"]["Use_cost_escalation"]
+            or input_dict["general_input"]["Use_cost_escalation"] == ""
+            or input_dict["general_input"]["Use_cost_escalation"] == "TRUE"):
+        pass
+    else:
+        p.cef_fuel = p.cef_wages = p.cef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
+
+    # Print a message for the user
+    print("The input file was loaded and your data is used in the TCO calculation. "
+          "Please check the output file and verify your input data is correct.")
+
 
 
 def tco_plot(result_dict, scenario_id):

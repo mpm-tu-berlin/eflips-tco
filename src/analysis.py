@@ -152,7 +152,6 @@ def plot_scenarios(scenarios: [int], savefig = False):
     for color, [tco_categories, data] in zip(color,plot_data.items()):
         p = ax.bar(name, data, label=tco_categories, bottom=bottom, color=color)
         bottom += data
-        ax.bar_label(p, label_type='center', padding=3, fmt='%.2f')
         ax.bar_label(p,labels = [f'{x:.2f}' if x!=0 else '' for x in data], label_type='center', padding=3, size = 14)
     # change size of text on x-axis.
     ax.tick_params(axis='x', labelsize=14)
