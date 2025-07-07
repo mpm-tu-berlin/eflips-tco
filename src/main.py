@@ -31,8 +31,8 @@ INCLUDE_DETAILED_ANALYSIS = os.environ.get('INCLUDE_DETAILED_ANALYSIS')
 if __name__ == "__main__":
 
     #-----------read the input data from a .csv file-----------#
-    with open(INPUT_FILE, newline="") as csvfile:
-        f.read_csv(csvfile)
+    with open(INPUT_FILE, newline="") as file:
+        f.read_json(file)
 
     #----------import all required data from the database----------#
     engine = create_engine(DATABASE_URL, echo=False)
