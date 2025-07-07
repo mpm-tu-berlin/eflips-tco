@@ -1,0 +1,149 @@
+{
+    "vehicles": {
+        "20": {
+            "name": "Alexander Dennis Enviro500EV small battery",
+            "procurement_cost": 500000.0,
+            "useful_life": 14,
+            "battery_procurement": 315.0,
+            "battery_useful_life": 7
+        },
+        "18": {
+            "name": "Ebusco 3.0 12 small battery",
+            "procurement_cost": 275000.0,
+            "useful_life": 14,
+            "battery_procurement": 315.0,
+            "battery_useful_life": 285
+        },
+        "19": {
+            "name": "Solaris Urbino 18 small battery",
+            "procurement_cost": 330000.0,
+            "useful_life": 14,
+            "battery_procurement": 285.0,
+            "battery_useful_life": 7
+        },
+        "14": {
+            "name": "Alexander Dennis Enviro500EV large battery",
+            "procurement_cost": 500000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 7
+        },
+        "12": {
+            "name": "Ebusco 3.0 12 large battery",
+            "procurement_cost": 275000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 285
+        },
+        "13": {
+            "name": "Solaris Urbino 18 large battery",
+            "procurement_cost": 330000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 7
+        },
+        "17": {
+            "name": "Alexander Dennis Enviro500EV large battery",
+            "procurement_cost": 500000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 7
+        },
+        "15": {
+            "name": "Ebusco 3.0 12 large battery ",
+            "procurement_cost": 275000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 7
+        },
+        "16": {
+            "name": "Solaris Urbino 18 large battery",
+            "procurement_cost": 330000.0,
+            "useful_life": 14,
+            "battery_procurement": 0.0,
+            "battery_useful_life": 7
+        },
+        "Add more vehicles here": null
+    },
+    "infrastructure": {
+        "120 kw_Slot": {
+            "procurement_cost": 0.0,
+            "useful_life": 20
+        },
+        "300 kw_Slot": {
+            "procurement_cost": 0.0,
+            "useful_life": 20
+        },
+        "DEPOT Station": {
+            "procurement_cost": 400000.0,
+            "useful_life": 20
+        },
+        "OPPORTUNITY Station": {
+            "procurement_cost": 0.0,
+            "useful_life": 20
+        },
+        "Add more infrastructure here": null
+    },
+    "general_input": {
+        "Discount_rate": [
+            2.0,
+            "% p.a."
+        ],
+        "Interest_rate": [
+            4.0,
+            "% p.a."
+        ],
+        "Project_duration": [
+            20,
+            "years"
+        ],
+        "Staff_cost": [
+            25.0,
+            "EUR/h"
+        ],
+        "Fuel_cost": [
+            1.0,
+            "EUR/kWh"
+        ],
+        "Maintenance_cost_vehicles": [
+            0.35,
+            "EUR/km"
+        ],
+        "Maintenance_cost_infrastructure": [
+            0.0,
+            "EUR/slot"
+        ],
+        "Taxes": [
+            556.0,
+            "EUR/Bus p.a."
+        ],
+        "Insurance": [
+            9581.0,
+            "EUR/Bus p.a."
+        ],
+        "General_cost_escalation": [
+            2.0,
+            "% p.a."
+        ],
+        "Wages_cost_escalation": [
+            2.5,
+            "% p.a."
+        ],
+        "Fuel_cost_escalation": [
+            0.7,
+            "% p.a."
+        ],
+        "Infrastructure_cost_escalation": [
+            2,
+            "% p.a."
+        ],
+        "Vehicle_cost_escalation": [
+            2,
+            "% p.a."
+        ],
+        "Use_cost_escalation": [
+            true,
+            "binary"
+        ]
+    }
+}
