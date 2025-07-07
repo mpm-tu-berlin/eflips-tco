@@ -76,6 +76,13 @@ if __name__ == "__main__":
     # Calculate the annual fleet mileage in km from the vehicle dictionary.
     annual_fleet_mileage = sum([data["annual_mileage"] for key,data in vehicle_dict.items()])
 
+    # For the diesel scenario: calculate the fuel consumption based on the mileage:
+    if total_energy_consumption < 10:
+        number_12m_bus = vehicle_dict["Ebusco 3.0 12 large battery VEHICLE"]["number_of_assets"]
+        diesel_consumption = (44.9/100 * number_12m_bus/total_number_vehicles # Fuel consumption of the 12m rigid bus
+                              +58.9/100 * (total_number_vehicles-number_12m_bus)/total_number_vehicles) # fuel consumption of 18m and double decker buses.
+        total_energy_consumption = annual_fleet_mileage*diesel_consumption
+
     # Calculate the actual driver hours including a buffer.
     total_driver_hours = f.calculate_total_driver_hours(driver_hours)
 
@@ -87,38 +94,38 @@ if __name__ == "__main__":
         "staff_cost": {
             "cost": p.staff_cost,
             "depending_on_scale": total_driver_hours,
-            "cost_escalation": p.pef_wages
+            "cost_escalation": p.cef_wages
         },
         "maint_cost_vehicles": {
             "cost": p.maint_cost,
             "depending_on_scale": annual_fleet_mileage,
-            "cost_escalation": p.pef_general
+            "cost_escalation": p.cef_general
         },
         "maint_cost_infra":{
             "cost": p.maint_infr_cost,
             "depending_on_scale": total_number_charging_slots,
-            "cost_escalation": p.pef_general
+            "cost_escalation": p.cef_general
         },
         "fuel_cost": {
             "cost": p.fuel_cost,
             "depending_on_scale": total_energy_consumption,
-            "cost_escalation": p.pef_fuel
+            "cost_escalation": p.cef_fuel
         },
         "insurance": {
             "cost": p.insurance,
             "depending_on_scale": total_number_vehicles,
-            "cost_escalation": p.pef_insurance
+            "cost_escalation": p.cef_insurance
         },
         "taxes": {
             "cost": p.taxes,
             "depending_on_scale": total_number_vehicles,
-            "cost_escalation": p.pef_general
+            "cost_escalation": p.cef_general
         }
     }
     tco_input_dict = {
         "project_duration": p.project_duration,
         "interest_rate": p.interest_rate,
-        "discount_rate": p.inflation_rate,
+        "discount_rate": p.discount_rate,
         "scenario": SCENARIO_ID,
         "passenger_mileage": passenger_mileage,
         "annual_fleet_mileage": annual_fleet_mileage
@@ -170,7 +177,7 @@ if __name__ == "__main__":
     # The dictionary which will be saved to the json file is created.
     data_out = {
         "input_data" : capex_input_dict | {
-            "Discount_rate": ((p.inflation_rate*100), "% p.a."),
+            "Discount_rate": ((p.discount_rate*100), "% p.a."),
             "Interest_rate": ((p.interest_rate*100), "% p.a."),
             "Project_duration": (p.project_duration, "years"),
             "Staff_cost": (p.staff_cost, "EUR/h"),
@@ -179,9 +186,13 @@ if __name__ == "__main__":
             "Maintenance_cost_infrastructure": (p.maint_infr_cost,"EUR/slot"),
             "Taxes": (p.taxes,"EUR/Bus p.a."),
             "Insurance": (p.insurance,"EUR/Bus p.a."),
-            "General_cost_escalation": ((p.pef_general*100), "% p.a."),
-            "Wages_cost_escalation": ((p.pef_wages*100), "% p.a."),
-            "Fuel_cost_escalation": ((p.pef_fuel*100), "% p.a.")
+            "General_cost_escalation": ((p.cef_general*100), "% p.a."),
+            "Wages_cost_escalation": ((p.cef_wages*100), "% p.a."),
+            "Fuel_cost_escalation": ((p.cef_fuel*100), "% p.a."),
+            "Insurance_cost_escalation":((p.cef_insurance*100),"% p.a."),
+            "Vehicle_cost_escalation":((p.cef_vehicles*100),"% p.a."),
+            "Battery_cost_escalation": ((p.cef_battery*100),"% p.a."),
+            "Infrastructure_cost_escalation": ((p.cef_infra*100),"% p.a.")
         },
         "Results":{
             "Number_of_vehicles": total_number_vehicles,
@@ -191,6 +202,7 @@ if __name__ == "__main__":
             "Total_annual_fleet_mileage": (round(annual_fleet_mileage,2), "km p.a."),
             "Total_annual_passenger_mileage": (round(passenger_mileage,2), "km p.a."),
             "Average_energy_consumption": (round(total_energy_consumption / annual_fleet_mileage,2), "kWh/km"),
+            "Total_energy_consumption": (round(total_energy_consumption/1000,2), 'MWh'),
             "Total_TCO_over_pd": (round(tco_result["TCO_over_PD"], 2), "EUR"),
             "Annual_TCO": (round(tco_result["Annual_TCO"], 2), "EUR p.a."),
             "Specific_TCO": (round(tco_result["Specific_TCO_over_PD"], 2), "EUR/km")
