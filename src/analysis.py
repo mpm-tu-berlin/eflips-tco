@@ -1,4 +1,5 @@
-# This file contains the sensitivity analysis and is only required for the Bachelor thesis.
+# This file contains the sensitivity analysis and further function for the graphical presentation of the results.
+# This is primarily required for the Bachelor thesis.
 
 import parameters as p
 import functions as f
@@ -11,10 +12,27 @@ import warnings as w
 
 # Conduct a sensitivity analysis
 def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list, scenario_id, save_fig = True):
+    """
+    This function performs a sensitivity analysis on the parameters specified in parameter_list for the scenario of
+    which the id is specified.
+    :param capex_input: The CAPEX input dictionary created in the main.
+    :param opex_input: The OPEX input dictionary created in the main.
+    :param general_input: The general input dictionary created in the main.
+    :param parameter_list: The list with the parameters on which the sensitivity analysis should be performed. The
+    names of the parameters must equal the names used in the input dictionaries.
+    :param scenario_id: The id of the scenario on which the sensitivity analysis should be conducted.
+    :param save_fig: A binary variable deciding whether or not to save the figure.
+    :return: None
+    """
+
+    # Set font size
     plt.rcParams.update({'font.size': 14})
+
+    # Create a figure
     Fig = plt.figure(1, (8, 6))
     ax = Fig.add_subplot(111)
 
+    # The resolution of the sensitivity analysis.
     resolution = 101
 
     for parameter in parameter_list:
@@ -96,6 +114,12 @@ def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list,
 
 # Plot the different scenarios in bar charts side by side
 def plot_scenarios(scenarios: [int], savefig = False):
+    """
+    This function creates a plot of the specific TCO of the scenarios specified in the scenarios list.
+    :param scenarios: An integer list of the scenario ids of the scenarios which should be plotted.
+    :param savefig: A binary variable deciding wether or not to save the figure.
+    :return: None
+    """
     data = {}
     for scenario in scenarios:
         try:
@@ -178,7 +202,12 @@ def plot_scenarios(scenarios: [int], savefig = False):
 
 # In this method the efficiency of the different scenarios is compared
 def plot_efficiency(scenarios: [int], savefig = True):
-
+    """
+    This function plots the specific TCO in terms of fleet and passenger mileage of the specified scenarios side-by-side.
+    :param scenarios: An integer list of the scenario ids of the scenarios which should be plotted.
+    :param savefig: A binary variable deciding wether or not to save the figure.
+    :return: None
+    """
     plt.rcParams.update({'font.size': 15})
     Fig = plt.figure(1, (20,7))
     ax = 0
@@ -261,48 +290,75 @@ def plot_efficiency(scenarios: [int], savefig = True):
         Fig.savefig("efficiency_scenarios.svg",bbox_inches="tight")
 
 
-def plot_scenario_info(scenarios: [int], savefig = True):
+def literature_results(savefig = True):
     """
-    This function visualizes some metrics of the calculated scenario and plots it in bar charts in order to allow for
-        more detailed analysis.
-    :param scenarios: A list of the scenarios ids of which the plots should be created.
-    :return: Nothing.
+    This function plots the results of the TCO calculation across the literature.
+    :param savefig: A binary variable deciding on wether or not to save the figure.
+    :return: None
     """
-    data = {}
-    for scenario in scenarios:
-        try:
-            with open("results_scn_{}.json".format(str(scenario)), 'r') as f:
-                # load data from the json files and append it to the list
-                key = "scenario {}".format(str(scenario))
-                data[key] = json.load(f)
-        except FileNotFoundError:
-            w.warn("The file result_scenario_{}.json was not found and has been disregarded in the plot. "
-                   "Please pay attention to the correct spelling of the file.".format(str(scenario)))
+    plt.rcParams.update({'font.size': 11})
+    literature_names = ['jefferies', 'sistig', 'basma', 'jahic', 'rogge', 'grauers', 'kim', 'szumska', 'pihlatie']
+    literature_acronyms = ['a)', 'b)', 'c)', 'd)', 'e)', 'f)', 'g)', 'h)', 'i)']
+    literature = [4.46, 6, 2.28, 3.85, 2.85, 3.24, 1.43, 0.55, 0.945]
+    bar_labels = ['Comprehensive studies', '_Comprehensive studies', '_Comprehensive studies', '_Comprehensive studies',
+                  '_Comprehensive studies', '_Comprehensive studies', 'Vehicle-focused studies',
+                  '_Vehicle-focused studies', '_Vehicle-focused studies']
+    bar_colors = ['tab:orange', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:orange', 'tab:blue',
+                  'tab:blue', 'tab:blue']
 
-    # Create a figure with fixed size.
-    Fig = plt.figure(1, (16, 5))
+    Fig = plt.figure(1, (8, 4))
+    ax = Fig.add_subplot(1, 1, 1)
+    ax.grid(True, 'major', 'y', ls='-', lw=0.5, fillstyle='full')
+    ax.bar(literature_acronyms, literature, label=bar_labels, color=bar_colors)
+    ax.set_ylabel('TCO in € p. km')
+    ax.set_title('TCO results across the literature')
+    ax.legend()
 
-    scn = ["Scenario {}".format(str(scenario)) for scenario in scenarios]
-    fleet_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_fleet_mileage"][0] for scenario in scenarios]
-    passenger_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_passenger_mileage"][0] for scenario in scenarios]
-    energy_consumption = [data["scenario {}".format(str(scenario))]["Results"]["Average_energy_consumption"][0] for scenario in scenarios]
-    driver_hours = [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_driver_hours"][0] for scenario in scenarios]
-    titles = ["Annual Fleet Mileage", "Annual Passenger Mileage", "Annual Driver Hours", "Specific Energy Consumption"]
-    plot_data = [fleet_mileage, passenger_mileage, driver_hours, energy_consumption]
-    units = ["Mileage in km", "Mileage in km", "Driver hours in h", "Energy consumption in kWh/km"]
-
-    color = cm.get_cmap('managua')(np.linspace(0.2, 0.9, len(scenarios)))
-    ax = None
-    for title,plot_d,unit in zip(titles,plot_data,units):
-        ax = Fig.add_subplot(1, 4, (titles.index(title)+1))
-        bar_container = ax.bar(scn, plot_d, color=color, label=scn)
-        ax.set(ylabel = unit, title = title, ylim = (0,(max(plot_d)*1.15)))
-        ax.bar_label(bar_container, label_type='edge', padding=3, fmt='%.2f')
-    handles, labels = ax.get_legend_handles_labels()
-    Fig.legend(handles, labels, bbox_to_anchor=(0.5,0.075), loc='upper center', ncol=len(handles))
-    Fig.suptitle("Scenario Metrics", y=0.95)
-    Fig.tight_layout()
-    Fig.subplots_adjust(bottom = 0.15)
-    Fig.show()
     if savefig:
-        Fig.savefig("scenario_metrics.png")
+        Fig.savefig('TCO_results_across_literature.jpg')
+
+# def plot_scenario_info(scenarios: [int], savefig = True):
+#     """
+#     This function visualizes some metrics of the calculated scenario and plots it in bar charts in order to allow for
+#         more detailed analysis.
+#     :param scenarios: A list of the scenarios ids of which the plots should be created.
+#     :return: Nothing.
+#     """
+#     data = {}
+#     for scenario in scenarios:
+#         try:
+#             with open("results_scn_{}.json".format(str(scenario)), 'r') as f:
+#                 # load data from the json files and append it to the list
+#                 key = "scenario {}".format(str(scenario))
+#                 data[key] = json.load(f)
+#         except FileNotFoundError:
+#             w.warn("The file result_scenario_{}.json was not found and has been disregarded in the plot. "
+#                    "Please pay attention to the correct spelling of the file.".format(str(scenario)))
+#
+#     # Create a figure with fixed size.
+#     Fig = plt.figure(1, (16, 5))
+#
+#     scn = ["Scenario {}".format(str(scenario)) for scenario in scenarios]
+#     fleet_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_fleet_mileage"][0] for scenario in scenarios]
+#     passenger_mileage= [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_passenger_mileage"][0] for scenario in scenarios]
+#     energy_consumption = [data["scenario {}".format(str(scenario))]["Results"]["Average_energy_consumption"][0] for scenario in scenarios]
+#     driver_hours = [data["scenario {}".format(str(scenario))]["Results"]["Total_annual_driver_hours"][0] for scenario in scenarios]
+#     titles = ["Annual Fleet Mileage", "Annual Passenger Mileage", "Annual Driver Hours", "Specific Energy Consumption"]
+#     plot_data = [fleet_mileage, passenger_mileage, driver_hours, energy_consumption]
+#     units = ["Mileage in km", "Mileage in km", "Driver hours in h", "Energy consumption in kWh/km"]
+#
+#     color = cm.get_cmap('managua')(np.linspace(0.2, 0.9, len(scenarios)))
+#     ax = None
+#     for title,plot_d,unit in zip(titles,plot_data,units):
+#         ax = Fig.add_subplot(1, 4, (titles.index(title)+1))
+#         bar_container = ax.bar(scn, plot_d, color=color, label=scn)
+#         ax.set(ylabel = unit, title = title, ylim = (0,(max(plot_d)*1.15)))
+#         ax.bar_label(bar_container, label_type='edge', padding=3, fmt='%.2f')
+#     handles, labels = ax.get_legend_handles_labels()
+#     Fig.legend(handles, labels, bbox_to_anchor=(0.5,0.075), loc='upper center', ncol=len(handles))
+#     Fig.suptitle("Scenario Metrics", y=0.95)
+#     Fig.tight_layout()
+#     Fig.subplots_adjust(bottom = 0.15)
+#     Fig.show()
+#     if savefig:
+#         Fig.savefig("scenario_metrics.png")

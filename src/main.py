@@ -15,11 +15,14 @@ import json
 import parameters as p
 import functions as f
 import get_data as gd
-from analysis import plot_scenarios,sensitivity_analysis, plot_efficiency, plot_scenario_info
+from analysis import plot_scenarios,sensitivity_analysis, plot_efficiency, literature_results
 from init_database import init_database
+
+# unzstd --long=31 results_for_tco.sql.zst --stdout | psql eflips_tco um DB neu zu laden. Erst alle Tabellen außer spatial_ref_sys auswählen und löschen (mit entf)!
 
 # Environment variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
+#DATABASE_URL = 'postgresql://julian:password@localhost/eflips_tco'
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
 INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
 INCLUDE_DETAILED_ANALYSIS = os.environ.get('INCLUDE_DETAILED_ANALYSIS')
@@ -199,11 +202,14 @@ if __name__ == "__main__":
         json.dump(data_out, out_file, indent=4)
         print("\nThe TCO calculation has been completed successfully. The results are saved in 'results_scn_{}.json'.\n"
               "Before recalculating the TCO, make sure to save your results in a different file as 'results_scn_{}.json' will be overwritten.".format(SCENARIO_ID, SCENARIO_ID))
-    
+
+    # -----------Conduct further analysis if desired-----------#
     if INCLUDE_DETAILED_ANALYSIS == 'True':
         plot_scenarios([1, 3, 4])
         plot_efficiency([1,3,4])
-        plot_scenario_info([1,3,4])
         sensitivity_analysis(capex_input_dict, opex_input_dict, tco_input_dict,
                             ["procurement", "useful_life", "staff_cost", "maint_cost_vehicles",
                              "maint_cost_infra", "fuel_cost", "interest_rate", "discount_rate"], SCENARIO_ID)
+
+    # -----------This is only required for the Bachelor thesis-----------#
+    literature_results()
