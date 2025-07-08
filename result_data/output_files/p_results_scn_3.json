@@ -1,0 +1,151 @@
+{
+    "input_data": {
+        "Alexander Dennis Enviro500EV large battery VEHICLE": {
+            "procurement_cost": 850000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.03,
+            "number_of_assets": 143,
+            "annual_mileage": 9789715.915796159
+        },
+        "Ebusco 3.0 12 large battery VEHICLE": {
+            "procurement_cost": 400000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.03,
+            "number_of_assets": 370,
+            "annual_mileage": 24904238.43695246
+        },
+        "Solaris Urbino 18 large battery VEHICLE": {
+            "procurement_cost": 603000.0,
+            "useful_life": 12,
+            "cost_escalation": 0.03,
+            "number_of_assets": 760,
+            "annual_mileage": 53017106.923659846
+        },
+        "Ebusco 3.0 12 large battery BATTERY": {
+            "procurement_cost": 220000.0,
+            "useful_life": 6,
+            "cost_escalation": 0.0,
+            "battery_capacity": 500.0,
+            "number_of_assets": 370
+        },
+        "Solaris Urbino 18 large battery BATTERY": {
+            "procurement_cost": 182400.0,
+            "useful_life": 6,
+            "cost_escalation": 0.0,
+            "battery_capacity": 640.0,
+            "number_of_assets": 760
+        },
+        "Alexander Dennis Enviro500EV large battery BATTERY": {
+            "procurement_cost": 207680.0,
+            "useful_life": 6,
+            "cost_escalation": 0.0,
+            "battery_capacity": 472.0,
+            "number_of_assets": 143
+        },
+        "120 kw_Slot INFRASTRUCTURE": {
+            "procurement_cost": 100000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 1248
+        },
+        "DEPOT Station INFRASTRUCTURE": {
+            "procurement_cost": 3400000.0,
+            "useful_life": 20,
+            "cost_escalation": 0.02,
+            "number_of_assets": 9
+        },
+        "Discount_rate": [
+            2.0,
+            "% p.a."
+        ],
+        "Interest_rate": [
+            4.0,
+            "% p.a."
+        ],
+        "Project_duration": [
+            20,
+            "years"
+        ],
+        "Staff_cost": [
+            25.0,
+            "EUR/h"
+        ],
+        "Fuel_cost": [
+            0.1794,
+            "EUR/kWh"
+        ],
+        "Maintenance_cost_vehicles": [
+            0.5,
+            "EUR/km"
+        ],
+        "Maintenance_cost_infrastructure": [
+            1000.0,
+            "EUR/slot"
+        ],
+        "Taxes": [
+            278.0,
+            "EUR/Bus p.a."
+        ],
+        "Insurance": [
+            9698.0,
+            "EUR/Bus p.a."
+        ],
+        "General_cost_escalation": [
+            2.0,
+            "% p.a."
+        ],
+        "Wages_cost_escalation": [
+            3.0,
+            "% p.a."
+        ],
+        "Fuel_cost_escalation": [
+            8.0,
+            "% p.a."
+        ]
+    },
+    "Results": {
+        "Number_of_vehicles": 1273,
+        "Number of charging slots": {
+            "120 kw_Slot": 1248,
+            "300 kw_Slot": 0,
+            "Total": 1248
+        },
+        "Number of charging stations": {
+            "DEPOT Station:": 9,
+            "OPPORTUNITY Station": 0,
+            "Total": 9
+        },
+        "Total_annual_driver_hours": [
+            5012800.0,
+            "h p.a."
+        ],
+        "Total_annual_fleet_mileage": [
+            87711061.28,
+            "km p.a."
+        ],
+        "Total_annual_passenger_mileage": [
+            81348766.1,
+            "km p.a."
+        ],
+        "Average_energy_consumption": [
+            2.32,
+            "kWh/km"
+        ],
+        "Total_energy_consumption": [
+            203078.23,
+            "MWh"
+        ],
+        "Total_TCO_over_pd": [
+            7679776722.38,
+            "EUR"
+        ],
+        "Annual_TCO": [
+            383988836.12,
+            "EUR p.a."
+        ],
+        "Specific_TCO": [
+            4.38,
+            "EUR/km"
+        ]
+    }
+}
