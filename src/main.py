@@ -20,13 +20,9 @@ from init_database import init_database
 
 # Environment variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
-#DATABASE_URL = 'postgresql://julian:password@localhost/eflips_tco'
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
 INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
 INCLUDE_DETAILED_ANALYSIS = os.environ.get('INCLUDE_DETAILED_ANALYSIS')
-
-# unzstd --long=31 results_for_tco.sql.zst --stdout | psql eflips_tco um DB neu zu laden. Erst alle Tabellen außer spatial_ref_sys auswählen und löschen (mit entf)!
-
 
 if __name__ == "__main__":
 
@@ -143,17 +139,6 @@ if __name__ == "__main__":
     # Specific TCO over project duration
     tco_sp_pd = tco_pd/(annual_fleet_mileage*p.project_duration)
 
-    # Print the results on the console if wanted.
-    # print('The total cost of ownership over the project duration'
-    #       ' of {} years is {:.2f} EUR.'.format(p.project_duration, tco_pd))
-    # print('Annual total cost of ownership over the project duration'
-    #       ' of {} years is {:.2f} EUR per year.'.format(p.project_duration, tco_ann))
-    # print('The specific total cost of ownership over the project duration'
-    #       ' of {} years is {:.2f} EUR per km.'.format(p.project_duration, round(tco_sp_pd,2)))
-    # print('The annual fleet mileage is {:.2f} km with a total of {} buses and an average energy '
-    #       'consumption of {} kWh/km.'.format(annual_fleet_mileage, (total_number_vehicles),
-    #                                          (round(total_energy_consumption / annual_fleet_mileage,2))))
-
     # Plot the specific TCO and save the plot to the repository.
     f.tco_plot(tco_result, SCENARIO_ID)
 
@@ -214,7 +199,7 @@ if __name__ == "__main__":
         json.dump(data_out, out_file, indent=4)
         print("\nThe TCO calculation has been completed successfully. The results are saved in 'results_scn_{}.json'.\n"
               "Before recalculating the TCO, make sure to save your results in a different file as 'results_scn_{}.json' will be overwritten.".format(SCENARIO_ID, SCENARIO_ID))
-
+    
     if INCLUDE_DETAILED_ANALYSIS == 'True':
         plot_scenarios([1, 3, 4])
         plot_efficiency([1,3,4])
