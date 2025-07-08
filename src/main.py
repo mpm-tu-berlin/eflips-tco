@@ -205,8 +205,8 @@ if __name__ == "__main__":
 
     # -----------Conduct further analysis if desired-----------#
     if INCLUDE_DETAILED_ANALYSIS == 'True':
-        plot_scenarios([1, 3, 4])
-        plot_efficiency([1,3,4])
+        plot_scenarios([1, 3, 4,5])
+        plot_efficiency([1,3,4,5])
         sensitivity_analysis(capex_input_dict, opex_input_dict, tco_input_dict,
                             ["procurement", "useful_life", "staff_cost", "maint_cost_vehicles",
                              "maint_cost_infra", "fuel_cost", "interest_rate", "discount_rate"], SCENARIO_ID)

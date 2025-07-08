@@ -24,7 +24,6 @@ def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list,
     :param save_fig: A binary variable deciding whether or not to save the figure.
     :return: None
     """
-
     # Set font size
     plt.rcParams.update({'font.size': 14})
 
@@ -287,7 +286,7 @@ def plot_efficiency(scenarios: [int], savefig = True):
     Fig.suptitle("Efficiency of different Scenarios", y = 0.95)
     Fig.show()
     if savefig:
-        Fig.savefig("efficiency_scenarios.svg",bbox_inches="tight")
+        Fig.savefig("efficiency_scenarios.png",bbox_inches="tight")
 
 
 def literature_results(savefig = True):
