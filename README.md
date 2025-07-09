@@ -1,68 +1,82 @@
-<!-- ABOUT THE PROJECT -->
-## About The Project
+# The TCO calculation software module
 
-This is the repository template for Software projects at MPM, TU Berlin. Fill it out with your project's information and you're good to go!
+This software module was developed as an addition to the eFLIPS software series for a comprehensive total cost of 
+ownership (TCO) analysis of the electric bus network simulated with [eflips-depot](https://github.com/mpm-tu-berlin/eflips-depot.git). 
 
 
 <!-- GETTING STARTED -->
 ## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
+<!--
 ### Prerequisites
 
-Here, you should list what software is required to run the project. For example, you might need to install OpenLCA (which version?), whether it runs on Windows, Mac, or Linux or whether a specific Python version is required.
+Here, you should list what software is required to run the project. For example, you might need to install OpenLCA 
+(which version?), whether it runs on Windows, Mac, or Linux or whether a specific Python version is required.
 
 Basically, if it is something you cannot install with a simple `pip install`, you should list it here.
-
+-->
 ### Installation
 
-_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
-
-2. Clone the repo
+<!--_Below is an example of how you can instruct your audience on installing and setting up your app. This template doesn't rely on any external dependencies or services._
+-->
+1. Clone this git repository
    ```sh
-   git clone https://github.com/your_username_/Project-Name.git
+   git clone https://github.com/mpm-tu-berlin/TCO-calculation.git
    ```
-3. Install pip packages
+2. Install the packages listed in ```poetry.lock``` and ```pyproject.toml``` using the following command:
    ```sh
-   pip install -r requirements.txt
+    poetry install 
    ```
+### Database
+After simulating a scenario in [eflips-depo](https://github.com/mpm-tu-berlin/eflips-depot.git), you need to connect 
+the obtained database to this project within your IDE. The environmental variable `DATABASE_URL` needs to be set to the 
+URL of your database.
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. For now, I will put some information about this template here.
+This software module allows you to calculate the TCO of a simulated bus network.
 
 ### Folder Structure
 
-#### `docs/`
-The documentation for the project is stored here. The documentation is generated using Sphinx. You can add more documentation here by creating `.rst` files in the `docs` directory and referencing them in the `index.rst` file.
-
 #### `src/`
-The source code for the project is stored here. You can add more source code files here. You should consider using different files or directories for different parts of your project.
+The source code of the TCO-calculation software is stored here. Additionally, there are important files required for the 
+TCO calculation.
 
-#### `tests/`
-The tests for the project are stored here. You can add more test files here. They should test the low-level building blocks of your project. Maybe there also can be some integration tests, which test the interaction of different parts of your project.
+##### `input_tco.json`
 
-#### `requirements.txt`
-This file lists all the Python packages that are required to run the project. You can add more packages here if you need them.
+This file includes all input data required for the TCO calculation. Please edit the input parameters to meet your 
+specifications.
 
-#### `LICENSE.md`
+#### `pyproject.toml`
+This file includes the dependencies and information about the project.
+
+#### `poetry.lock`
+This file includes the information for poetry to install the dependencies.
+
+<!--#### `LICENSE.md`
 This file contains the license for the project. You should choose a license that fits your needs. [Choose an Open Source License](https://choosealicense.com)
-
+-->
 #### `README.md`
-This file contains the information about the project. You should fill it out with information about your project.
+This file contains the information about the project.
 
-#### `input/` (optional)
-This directory contains input files for the project. You can add more input files here.
+### Analysis
 
-#### `output/` (optional)
-This directory contains output files for the project. You can add more output files here.
+#### Bar charts of efficiency and specific TCO
 
+For the graphical presentation of your results, you need to save the result file produced by the `tco_calculation(...)` 
+callable by setting the variable `save_result` to `True`. After calculating different scenarios, please specify the 
+`scenario_id` of each of the scenarios, which should be included in the analysis and for which there is a `result_scn_ID.json`
+in the directory, in the callables at the end of the main.
+
+#### Sensitivity analysis
+
+To conduct the sensitivity analysis for a specific scenario, you need to add the names of the desired parameters to the 
+`parameter_list` of the callable `sensitivity_analysis(...)`. The names of the parameters must be identical with the 
+ones given in the `capex_input_dict`, the `opex_input_dict` and the `general_input_dict`. Possible input parameters 
+could be: `["procurement", "useful_life", "staff_cost", "maint_cost_vehicles", "maint_cost_infra", "fuel_cost",
+ "interest_rate", "discount_rate"]`.
 <!-- DOCUMENTATION -->
-
-## Documentation
+<!--## Documentation
 
 This project is documented using the [Sphinx](https://www.sphinx-doc.org/en/master/) documentation generator. The documentation is in the `docs` directory. Sphix-Autoapi is used to automatically generate documentation from the source code's docstrings. To build the documentation, run the following command:
 
@@ -73,25 +87,22 @@ sphinx-build -b html . _build
 ```
 
 The documentation will be built in the `_build` directory. Open the `index.html` file in your browser to view the documentation.
-
+-->
 <!-- ROADMAP -->
-## Roadmap
+<!--## Roadmap
 
 - [x] Add Changelog
 - [x] Add back to top links
 - [ ] Add Additional Templates w/ Examples
 - [ ] Multi-language Support
     - [ ] Chinese
-    - [ ] Spanish
-
-See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).
-
+    - [ ] Spanish-->
+<!-- See the [open issues](https://github.com/othneildrew/Best-README-Template/issues) for a full list of proposed features (and known issues).-->
+<!--
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
+-->
 <!-- CONTRIBUTING -->
-## Contributing
+<!--## Contributing
 
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
@@ -105,22 +116,20 @@ Don't forget to give the project a star! Thanks again!
 5. Open a Pull Request
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
+-->
 <!-- LICENSE -->
-## License
+<!--## License
 
 Distributed under the WTFPL License. See `LICENSE.txt` for more information. **For your project, you should choose a license that fits your needs. [Choose an Open Source License](https://choosealicense.com)**
-
+-->
 <!-- CONTACT -->
 ## Contact
 
-Lu - ludger.heide@tu-berlin.de
+j.dubiel@campus.tu-berlin.de
 
-Project Link: [https://github.com/your_username/repo_name](https://github.com/your_username/repo_name)
+Project Link: [https://github.com/mpm-tu-berlin/TCO-Calculation](https://github.com/mpm-tu-berlin/TCO-Calculation)
 
 <!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
+<!--## Acknowledgments
 
-Use this space to list resources you find helpful and would like to give credit to. 
+Use this space to list resources you find helpful and would like to give credit to. -->
