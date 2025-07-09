@@ -1,14 +1,10 @@
-import datetime
-import warnings
-from typing import List, Tuple, Any
+# This file contains all callables required for loading the data from the database.
+
+import warnings as w
 from eflips.model import Vehicle, Station, Event, VehicleType, Route, Trip, BatteryType, Area, Process, \
     ChargingPointType, Depot
 from sqlalchemy import or_, and_
 from sqlalchemy import func
-import numpy as np
-import functions
-import time
-import warnings as w
 
 from eflips.eval.output.prepare import power_and_occupancy
 

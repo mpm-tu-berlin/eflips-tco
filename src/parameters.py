@@ -4,8 +4,7 @@ they should be put in by feeding a list into the program.
 """
 
 #project duration in years
-project_duration = 12
-
+project_duration = 20
 
 #CAPEX
 
@@ -16,19 +15,15 @@ cef_fuel = 0.007
 cef_insurance = 0.02
 cef_vehicles = 0.02
 cef_battery = -0.0
-cef_infra = 0.0
+cef_infra = 0.02
 
 # Annual interest and discount rate.
 interest_rate = 0.04
 discount_rate = 0.02
 
 # asset specific lists including: (asset_name, procurement_cost, useful_life, cost_escalation).
-# The contents are loaded from the input file.
-Vehicles = [
-    #(0,"Ebusco 3.0 12", 400000.0, 12, cef_vehicles),
-    #(0,"Solaris Urbino 18", 603000.0, 12, cef_vehicles),
-    #(0,"Alexander Dennis Enviro500EV", 850000.0, 12, cef_vehicles)
-]
+# The contents are loaded from the input_tco.json file.
+Vehicles = []
 
 def vehicle_dict():
     Vehicle_dict = {
@@ -37,12 +32,8 @@ def vehicle_dict():
     }
     return Vehicle_dict
 
-# procurement cost per kWh
-Battery = [
-    #(0,"Ebusco 3.0 12", 350, 6, cef_battery),
-    #(0,"Solaris Urbino 18",  350, 6, cef_battery),
-    #(0,"Alexander Dennis Enviro500EV", 350, 6, cef_battery)
-]
+# procurement cost per kWh, the data is loaded from the input_tco.json file
+Battery = []
 
 def battery_dict():
     Battery_dict = {
@@ -67,7 +58,6 @@ def charging_stations_dict():
 
 
 #OPEX
-
 
 # hourly staff cost in EUR per driver
 staff_cost = 25

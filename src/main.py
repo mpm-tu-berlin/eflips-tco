@@ -1,16 +1,14 @@
-#!/usr/bin/env python3
-
 """
 This is the main module of the project. It should contain the main entry point of the project. By
 running this, the essential functionality of the project should be executed.
 """
 
+import os
+import json
+
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
 from eflips.model import Scenario
-
-import os
-import json
 
 import parameters as p
 import functions as f
@@ -18,11 +16,9 @@ import get_data as gd
 from analysis import plot_scenarios,sensitivity_analysis, plot_efficiency, literature_results
 from init_database import init_database
 
-# unzstd --long=31 results_for_tco.sql.zst --stdout | psql eflips_tco um DB neu zu laden. Erst alle Tabellen außer spatial_ref_sys auswählen und löschen (mit entf)!
 
 # Environment variables
 DATABASE_URL = os.environ.get('DATABASE_URL')
-#DATABASE_URL = 'postgresql://julian:password@localhost/eflips_tco'
 SCENARIO_ID = os.environ.get('SCENARIO_ID')
 INPUT_FILE = os.environ.get('INPUT_FILE') # 'input_tco.csv' in this case
 INCLUDE_DETAILED_ANALYSIS = os.environ.get('INCLUDE_DETAILED_ANALYSIS')
@@ -87,7 +83,7 @@ if __name__ == "__main__":
 
     # make a dictionary including all tco parameters needed for the calculation
     capex_input_dict = vehicle_dict | battery_dict | charging_infrastructure_by_type
-    #print(capex_input_dict)
+
     # Create a dictionary including all relevant OPEX parameters
     opex_input_dict = {
         "staff_cost": {
