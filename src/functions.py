@@ -1,13 +1,12 @@
 # This file contains methods used in the tco calculation and some additional methods
 
-import csv,json
+import json
+import numpy as np
+import warnings as w
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
-import numpy as np
 
-import get_data
 import parameters as p
-import warnings as w
 
 
 
@@ -285,81 +284,6 @@ def tco_calculation(
     return result
 
 
-# get the input data from the input CSV file.
-def read_csv(
-        csvfile
-):
-    """
-    This method reads the csv file for the input data and changes the parameters in parameters.py to match the given
-    values from the CSV file. If some values are not given, the default values from parameters.py are used instead.
-
-    :param csvfile: The CSV file which contains the input parameters.
-    :return: None, this function purely changes the input parameters in parameters.py.
-    """
-    input_list = list(csv.reader(csvfile, delimiter=';'))
-    # Read the data for vehicle type and infrastructure type
-    for i in range(len(input_list)):
-        # Create lists in the format of the tuples in parameters.Vehicles, parameters.Batteries and parameters.Charging_Stations
-        vehicle = [str(input_list[i][0]), cast_value(input_list[i][1], "float"),
-                   cast_value(input_list[i][2], "int"), p.cef_vehicles]
-        battery = [str(input_list[i][3]), cast_value(input_list[i][4], "float"),
-                   cast_value(input_list[i][5], "int"), p.cef_battery]
-        infra = [str(input_list[i][6]), cast_value(input_list[i][7], "float"),
-                 cast_value(input_list[i][8], "int"), p.cef_infra]
-
-        # Create lists with the names of vehicles, batteries and charging infrastructure in order to check, whether the
-        # new entry needs to be appended to the list or a default value needs to be replaced
-        vehicle_names = [x[0] for x in p.Vehicles]
-        battery_names = [x[0] for x in p.Battery]
-        infra_names = [x[0] for x in p.Charging_Stations]
-
-        # Append new vehicle types (including battery) to the list or replace the values if this type is already in the list.
-        if vehicle[0] in vehicle_names:
-            if vehicle[0] not in battery_names:
-                raise ValueError("Please add data for the battery type of bus {}. The vehicle_battery_name needs to be identical with {}.".format(vehicle[0], vehicle[0]))
-            idx = vehicle_names.index(vehicle[0])
-            p.Vehicles[idx] = tuple(vehicle)
-            idx_battery = battery_names.index(battery[0])
-            p.Battery[idx_battery] = tuple(battery)
-        else:
-            # If the entry of the list is empty it is not considered
-            if None in vehicle:
-                pass
-            else:
-                p.Vehicles.append(tuple(vehicle))
-                p.Battery.append(tuple(battery))
-
-        # Append new infrastructure types to the list and replace the values if this type is already in the list
-        if infra[0] in infra_names:
-            idx = infra_names.index(infra[0])
-            p.Charging_Stations[idx] = infra
-        else:
-            if None in infra:
-                pass
-            else:
-                p.Charging_Stations.append(infra)
-
-    # Replace the other parameters if necessary or use the default values in case there is no data provided.
-    p.project_duration = set_default_value(input_list[1][9], p.project_duration, "int", "project duration")
-    p.discount_rate = set_default_value(input_list[1][10], p.discount_rate, "float", "discount rate")
-    p.interest_rate = set_default_value(input_list[1][11], p.interest_rate, "float", "interest rate")
-    p.staff_cost = set_default_value(input_list[1][12], p.staff_cost, "float", "staff cost")
-    p.fuel_cost = set_default_value(input_list[1][13], p.fuel_cost, "float", "fuel cost")
-    p.maint_cost = set_default_value(input_list[1][14], p.maint_cost, "float", "maintenance cost")
-    p.maint_infr_cost = set_default_value(input_list[1][15], p.maint_infr_cost, "float", "maintainance cost infrastructure")
-    p.taxes = set_default_value(input_list[1][16], p.taxes, "float", "taxes")
-    p.insurance = set_default_value(input_list[1][17], p.insurance, "float", "insurance")
-
-    # Decide whether cost escalation is considered or not. The default procedure is to consider cost escalation.
-    if input_list[0][17] == "" or input_list[1][18] == "TRUE":
-        pass
-    else:
-        p.cef_fuel = p.cef_wages = p.cef_general = p.cef_vehicles = p.cef_battery = p.cef_infra = 0
-
-    # Print a message for the user
-    print("The CSV file has been read and your data is used in the TCO calculation. Please check the output file and verify your input data is correct.")
-
-
 # Cast a value to the required datatype and return None in case of a ValueError
 def cast_value(
         value,
@@ -558,10 +482,10 @@ def tco_plot(result_dict, scenario_id):
     for color, [tco_categories, data] in zip(color, tco_data.items()):
         p = ax.bar('specific TCO', data, width = 0.05, label=tco_categories, bottom=bottom, color=color)
         bottom += data
-        ax.bar_label(p, label_type='center',padding=3, fmt='%.2f')
+        ax.bar_label(p, labels=[f'{data:.2f}' if data != 0 else ''], label_type='center', padding=3, size=12)
 
     # write the total tco over the bar
-    ax.text(0, (bottom+0.1),s = str("{:.2f}".format(round(bottom,2))), ha = 'center', va = 'bottom', fontweight = 'bold')
+    ax.text(0, (bottom+0.1),s = str("{:.2f}".format(round(bottom,2))), ha = 'center', va = 'bottom', fontweight = 'bold', size = 12)
 
     # Set limit on y axis
     ax.set_ylim(top = bottom+0.5)
