@@ -21,7 +21,7 @@ def sensitivity_analysis(capex_input, opex_input, general_input, parameter_list,
     :param parameter_list: The list with the parameters on which the sensitivity analysis should be performed. The
     names of the parameters must equal the names used in the input dictionaries.
     :param scenario_id: The id of the scenario on which the sensitivity analysis should be conducted.
-    :param save_fig: A binary variable deciding whether or not to save the figure.
+    :param save_fig: A binary variable deciding wether or not to save the figure.
     :return: None
     """
     # Set font size
