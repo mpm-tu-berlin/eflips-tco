@@ -42,6 +42,9 @@ This software module allows you to calculate the TCO of a simulated bus network.
 The source code of the TCO-calculation software is stored here. Additionally, there are important files required for the 
 TCO calculation.
 
+#### `result_data/`
+Example result files are stored in this folder as well as figures created with this program.
+
 ##### `input_tco.json`
 
 This file includes all input data required for the TCO calculation. Please edit the input parameters to meet your 
