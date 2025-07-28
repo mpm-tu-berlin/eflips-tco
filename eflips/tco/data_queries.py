@@ -297,6 +297,7 @@ def get_simulation_period(session, scenario):
 def init_tco_parameters(
     scenario_id,
     database_url,
+    scenario_tco_parameters,
     vehicle_types,
     battery_types,
     charging_point_types,
@@ -311,7 +312,8 @@ def init_tco_parameters(
 
     session = Session(create_engine(database_url))
     with session:
-        # scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+        scenario.tco_parameters = scenario_tco_parameters
         # Add tco parameters to vehicle types
         for vt_id, vt_tco_parameters in vehicle_types.items():
             vt = session.query(VehicleType).filter(VehicleType.id == vt_id).one()

@@ -72,9 +72,9 @@ class TCOCalculator:
 
             # initialize scenario related data
             # TODO get this from the scenario
-            self.project_duration = 12
-            self.interest_rate = 0.04
-            self.inflation_rate = 0.025
+            self.project_duration = self.scenario.tco_parameters["project_duration"]
+            self.interest_rate = self.scenario.tco_parameters["interest_rate"]
+            self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
 
             # Initialize the output values
             self.total_capex = 0
@@ -223,25 +223,27 @@ class TCOCalculator:
 
         # Uncomment this when tco parameters are added to the scenario
         # scenario_tco_parameters = scenario.tco_parameters
-        scenario_tco_parameters = {
-            # hourly staff cost in EUR per driver
-            "staff_cost": 21.875,  # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
-            "annual_staff_cost": 35000,
-            # Fuel cost in EUR per unit fuel
-            "fuel_cost": 0.1794,  # electricity cost
-            # Maintenance cost in EUR per km
-            "maint_cost": 0.35,
-            # Maintenance cost infrastructure per year and charging slot
-            "maint_infr_cost": 1000,
-            # Taxes and insurance cost in EUR per year and bus
-            "taxes": 400.50,
-            "insurance": 300,
-            # Cost escalation factors (cef / pef)
-            "pef_general": 0.02,
-            "pef_wages": 0.02,
-            "pef_fuel": 0.038,
-            "pef_insurance": 0.1,
-        }
+        # scenario_tco_parameters = {
+        #     # hourly staff cost in EUR per driver
+        #     "staff_cost": 25.0,  # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
+        #     "annual_staff_cost": 35000,
+        #     # Fuel cost in EUR per unit fuel
+        #     "fuel_cost": 0.1794,  # electricity cost
+        #     # Maintenance cost in EUR per km
+        #     "maint_cost": 0.35,
+        #     # Maintenance cost infrastructure per year and charging slot
+        #     "maint_infr_cost": 1000,
+        #     # Taxes and insurance cost in EUR per year and bus
+        #     "taxes": 278,
+        #     "insurance": 9703,
+        #     # Cost escalation factors (cef / pef)
+        #     "pef_general": 0.02,
+        #     "pef_wages": 0.02,
+        #     "pef_fuel": 0.038,
+        #     "pef_insurance": 0.1,
+        # }
+
+        scenario_tco_parameters = self.scenario.tco_parameters
 
         # Get the annual driver hours
 
