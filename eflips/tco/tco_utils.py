@@ -29,7 +29,7 @@ def annuity(procurement_cost: float, useful_life: int, interest_rate=0.04):
     """
     This method is used to calculate the annuity of an asset, a default value for the interest rate is set.
 
-    :param procurement_cost: The procurement cost of the respective asset of which the annuty should be calculated.
+    :param procurement_cost: The procurement cost of the respective asset of which the annuity should be calculated.
     :param useful_life: The useful life of the respective asset, which is also the time over which the asset is financed.
     :param interest_rate: The interest rate which is the cost of the capital needed to procure the respective asset.
     :return: The value of the annuity rounded to 2 decimals.
