@@ -12,7 +12,7 @@ import json
 
 # Environment variables
 DATABASE_URL = os.environ.get("DATABASE_URL")
-SCENARIO_ID = 4
+SCENARIO_ID = 1
 from eflips.tco.tco_calculator import TCOCalculator
 
 
@@ -21,43 +21,43 @@ if __name__ == "__main__":
     # initialize the database if there are no tco parameters
 
     vehicle_types = {
-        18: {
+        12: {
             "name": "Ebusco 3.0 12 large battery",
-            "useful_life": 12,
+            "useful_life": 14,
             "procurement_cost": 370000.0,
-            "cost_escalation": 0.025,
+            "cost_escalation": 0.02,
         },
-        19: {
+        13: {
             "name": "Solaris Urbino 18 large battery",
-            "useful_life": 12,
+            "useful_life": 14,
             "procurement_cost": 603000.0,
-            "cost_escalation": 0.025,
+            "cost_escalation": 0.02,
         },
-        20: {
+        14: {
             "name": "Alexander Dennis Enviro500EV large battery",
-            "useful_life": 12,
+            "useful_life": 14,
             "procurement_cost": 700000.0,
-            "cost_escalation": 0.025,
+            "cost_escalation": 0.02,
         },
     }
 
     battery_types = {
-        10: {
+        4: {
             "name": "Ebusco 3.0 12 large battery",
-            "procurement_cost": 350,
-            "useful_life": 6,
+            "procurement_cost": 315,
+            "useful_life": 7,
             "cost_escalation": -0.03,
         },
-        11: {
-            "name": "Ebusco 3.0 12 large battery",
-            "procurement_cost": 350,
-            "useful_life": 6,
+        5: {
+            "name": "Solaris Urbino 18 large battery",
+            "procurement_cost": 285,
+            "useful_life": 7,
             "cost_escalation": -0.03,
         },
-        12: {
-            "name": "Ebusco 3.0 12 small battery",
-            "procurement_cost": 350,
-            "useful_life": 6,
+        6: {
+            "name": "Alexander Dennis Enviro500EV large battery",
+            "procurement_cost": 315,
+            "useful_life": 7,
             "cost_escalation": -0.03,
         },
     }
@@ -92,9 +92,32 @@ if __name__ == "__main__":
         },
     }
 
+    scenario_tco_parameters = {
+        "project_duration": 20,
+        "interest_rate": 0.04,
+        "inflation_rate": 0.02,
+        "staff_cost": 25.0,  # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
+        # Fuel cost in EUR per unit fuel
+        "fuel_cost": 0.1794,  # electricity cost
+        # Maintenance cost in EUR per km
+        "maint_cost": 0.35,
+        # Maintenance cost infrastructure per year and charging slot
+        "maint_infr_cost": 1000,
+        # Taxes and insurance cost in EUR per year and bus
+        "taxes": 278,
+        "insurance": 9703,
+        # Cost escalation factors (cef / pef)
+        "pef_general": 0.02,
+        "pef_wages": 0.025,
+        "pef_fuel": 0.038,
+        "pef_insurance": 0.02,
+
+    }
+
     init_tco_parameters(
         scenario_id=SCENARIO_ID,
         database_url=DATABASE_URL,
+        scenario_tco_parameters=scenario_tco_parameters,
         vehicle_types=vehicle_types,
         battery_types=battery_types,
         charging_point_types=charging_point_types,
