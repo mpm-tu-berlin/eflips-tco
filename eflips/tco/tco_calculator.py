@@ -14,8 +14,7 @@ from eflips.tco.data_queries import (
     get_total_energy_consumption,
 )
 
-from eflips.tco.tco_utils import net_present_value
-from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType
+from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType, net_present_value
 
 import pandas as pd
 
@@ -43,35 +42,22 @@ class TCOCalculator:
             self.annual_fleet_mileage = annual_fleet_mileage
 
             if capex_items is None:
-                try:
-                    self._load_capex_items_from_db(session)
-                    # TODO capex_items can be a list of dicts with the format Dict[id, type, parameters]
-                except Exception as e:
-                    raise ValueError(
-                        "Error loading CAPEX items from the database. Please make sure the tco-related data exists in "
-                        "the database, or use your own list of capex items."
-                    ) from e
+                self._load_capex_items_from_db(session)
+
             else:
                 raise NotImplementedError(
                     "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
                 )
             if opex_items is None:
-                try:
-                    self.opex_items = self._load_opex_items_from_db(
-                        session, self.capex_items, annual_fleet_mileage
-                    )
-                except Exception as e:
-                    raise ValueError(
-                        "Error loading OPEX items from the database. Please make sure the tco-related data exists in "
-                        "the database, or use your own list of opex items."
-                    ) from e
+
+                self.opex_items = self._load_opex_items_from_db(
+                        session)
             else:
                 raise NotImplementedError(
-                    "Using your own list of dic    type: CapexItemTypetonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
+                    "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
                 )
 
             # initialize scenario related data
-            # TODO get this from the scenario
             self.project_duration = self.scenario.tco_parameters["project_duration"]
             self.interest_rate = self.scenario.tco_parameters["interest_rate"]
             self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
@@ -98,7 +84,6 @@ class TCOCalculator:
         # Calculate the total cost for each asset over the project duration.
         for capex_item in self.capex_items:
             # Calculate the procurement cost for the respective asset including replacement.
-            # TODO general_input_dict can be replaced after adding tco parameters to the scenario object.
             procurement_this_type = (
                 capex_item.calculate_total_procurement_cost(
                     project_duration=self.project_duration,
@@ -174,7 +159,7 @@ class TCOCalculator:
         fig, ax = plt.subplots()
         bottom = 0
         for item_type, cost in tco_by_type.items():
-            ax.bar(
+            current_bar = ax.bar(
                 "Total TCO",
                 cost,
                 bottom=bottom,
@@ -182,6 +167,10 @@ class TCOCalculator:
                 width=0.2,
             )
             bottom += cost
+            ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
+
+
+
         ax.set_ylabel("Specific Cost (EUR/km)")
         ax.set_xlim(left=-0.5, right=0.5)
         ax.set_title("Total Cost of Ownership by Type")
@@ -211,37 +200,13 @@ class TCOCalculator:
         )
         self.capex_items = capex_items
 
-    def _load_opex_items_from_db(self, session, capex_input, annual_fleet_mileage):
+    def _load_opex_items_from_db(self, session):
         """
         This method returns the opex input dictionary, which is used to calculate the TCO.
         :return: A dictionary including the opex input data.
         """
 
         list_opex_items = []
-
-        # TODO this is a temporary solution, it should be replaced by adding tco parameters into the scenario
-
-        # Uncomment this when tco parameters are added to the scenario
-        # scenario_tco_parameters = scenario.tco_parameters
-        # scenario_tco_parameters = {
-        #     # hourly staff cost in EUR per driver
-        #     "staff_cost": 25.0,  # calculated: 35,000 € p.a. per driver/1600 h p.a. per driver
-        #     "annual_staff_cost": 35000,
-        #     # Fuel cost in EUR per unit fuel
-        #     "fuel_cost": 0.1794,  # electricity cost
-        #     # Maintenance cost in EUR per km
-        #     "maint_cost": 0.35,
-        #     # Maintenance cost infrastructure per year and charging slot
-        #     "maint_infr_cost": 1000,
-        #     # Taxes and insurance cost in EUR per year and bus
-        #     "taxes": 278,
-        #     "insurance": 9703,
-        #     # Cost escalation factors (cef / pef)
-        #     "pef_general": 0.02,
-        #     "pef_wages": 0.02,
-        #     "pef_fuel": 0.038,
-        #     "pef_insurance": 0.1,
-        # }
 
         scenario_tco_parameters = self.scenario.tco_parameters
 
@@ -277,14 +242,14 @@ class TCOCalculator:
             name="Maintenance Cost Vehicles",
             type=OpexItemType.MAINTENANCE,
             unit_cost=scenario_tco_parameters["maint_cost"],
-            usage_amount=annual_fleet_mileage,
+            usage_amount=self.annual_fleet_mileage,
             cost_escalation=scenario_tco_parameters["pef_general"],
         )
         list_opex_items.append(maint_cost_vehicles)
 
         total_number_vehicles = sum(
             asset.quantity
-            for asset in capex_input
+            for asset in self.capex_items
             if asset.type == CapexItemType.VEHICLE
         )
         insurance = OpexItem(
@@ -307,7 +272,7 @@ class TCOCalculator:
 
         total_number_charging_points = sum(
             asset.quantity
-            for asset in capex_input
+            for asset in self.capex_items
             if asset.type == CapexItemType.CHARGING_POINT
         )
         maint_cost_infra = OpexItem(

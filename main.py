@@ -12,7 +12,7 @@ import json
 
 # Environment variables
 DATABASE_URL = os.environ.get("DATABASE_URL")
-SCENARIO_ID = 1
+SCENARIO_ID = 4
 from eflips.tco.tco_calculator import TCOCalculator
 
 
@@ -20,77 +20,92 @@ if __name__ == "__main__":
 
     # initialize the database if there are no tco parameters
 
-    vehicle_types = {
-        12: {
+    vehicle_types = [
+        {
+            "id": 18,
             "name": "Ebusco 3.0 12 large battery",
             "useful_life": 14,
-            "procurement_cost": 370000.0,
+            "procurement_cost": 340000.0,
             "cost_escalation": 0.02,
         },
-        13: {
+        {
+            "id": 19,
             "name": "Solaris Urbino 18 large battery",
             "useful_life": 14,
             "procurement_cost": 603000.0,
             "cost_escalation": 0.02,
         },
-        14: {
+        {
+            "id": 20,
             "name": "Alexander Dennis Enviro500EV large battery",
             "useful_life": 14,
-            "procurement_cost": 700000.0,
+            "procurement_cost": 650000.0,
             "cost_escalation": 0.02,
         },
-    }
+    ]
 
-    battery_types = {
-        4: {
+    battery_types = [
+        {
             "name": "Ebusco 3.0 12 large battery",
             "procurement_cost": 315,
             "useful_life": 7,
             "cost_escalation": -0.03,
+            "vehicle_type_id": 18,
+            # "id": 67,
         },
-        5: {
+        {
             "name": "Solaris Urbino 18 large battery",
             "procurement_cost": 285,
             "useful_life": 7,
             "cost_escalation": -0.03,
+            "vehicle_type_id": 19,
+            # "id": 68,
         },
-        6: {
+        {
             "name": "Alexander Dennis Enviro500EV large battery",
             "procurement_cost": 315,
             "useful_life": 7,
             "cost_escalation": -0.03,
+            "vehicle_type_id": 20,
+            # "id": 69,
         },
-    }
+    ]
 
-    charging_point_types = {
-        "depot": {
+    charging_point_types = [
+        {
+            "type": "depot",
             "name": "Depot Charging Point",
             "procurement_cost": 100000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
+            # "id": 50,
         },
-        "opportunity": {
+        {
+            "type": "opportunity",
             "name": "Opportunity Charging Point",
             "procurement_cost": 275000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
+            # "id": 51,
         },
-    }
+    ]
 
-    charging_infrastructure = {
-        "depot": {
+    charging_infrastructure = [
+        {
+            "type": "depot",
             "name": "Depot Charging Infrastructure",
             "procurement_cost": 3400000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
         },
-        "station": {
+        {
+            "type": "station",
             "name": "Opportunity Charging Infrastructure",
             "procurement_cost": 500000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
         },
-    }
+    ]
 
     scenario_tco_parameters = {
         "project_duration": 20,
@@ -105,13 +120,12 @@ if __name__ == "__main__":
         "maint_infr_cost": 1000,
         # Taxes and insurance cost in EUR per year and bus
         "taxes": 278,
-        "insurance": 9703,
+        "insurance": 9693, # DCO #9703, # EBU
         # Cost escalation factors (cef / pef)
         "pef_general": 0.02,
         "pef_wages": 0.025,
         "pef_fuel": 0.038,
         "pef_insurance": 0.02,
-
     }
 
     init_tco_parameters(
