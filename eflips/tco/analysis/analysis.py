@@ -1,7 +1,7 @@
 # This file contains the sensitivity analysis and is only required for the Bachelor thesis.
 
 import parameters as p
-import tco_utils as f
+import eflips.tco.tco_utils as f
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
