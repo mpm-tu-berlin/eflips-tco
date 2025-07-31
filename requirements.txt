@@ -1,5 +1,6 @@
 ### Put your custom packages here
-
+numpy~=2.2.0
+SQLAlchemy~=2.0.36
 
 ### The following packages are part of the MPM repository template
 astroid==3.2.2

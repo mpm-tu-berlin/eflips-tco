@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/mpm-project-template.iml" filepath="$PROJECT_DIR$/.idea/mpm-project-template.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/eflips-to.iml" filepath="$PROJECT_DIR$/.idea/eflips-to.iml" />
     </modules>
   </component>
 </project>
