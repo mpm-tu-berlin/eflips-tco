@@ -14,10 +14,19 @@ dependencies = [
     "matplotlib (==3.9.0)",
     "pandas (>=2.3.0,<3.0.0)",
     "eflips-model (>=9.0.0,<10.0.0)",
+
 ]
 
 [tool.poetry]
 package-mode = false
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.4.1"
+eflips-depot = "^4.12.2"
+
+
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
