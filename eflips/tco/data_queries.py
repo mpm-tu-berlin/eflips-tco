@@ -147,27 +147,25 @@ def load_capex_items_infrastructure(session, scenario):
     # Get the charging stations and the respective tco parameters.
     stations = (
         session.query(
-            Station.charge_type,
             func.count(func.distinct(Station.id)),
             Station.tco_parameters,
         )
         .join(Event, Event.station_id == Station.id)
         .filter(
             Station.scenario_id == scenario.id,
-            Station.is_electrified,
             or_(
-                Event.event_type == "CHARGING_OPPORTUNITY",
-                Event.event_type == "CHARGING_DEPOT",
+                Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                Event.event_type == EventType.CHARGING_DEPOT,
             ),
         )
-        .group_by(Station.tco_parameters, Station.charge_type)
+        .group_by(Station.tco_parameters)
         .all()
     )
 
     # Add all stations grouped by type and tco parameters to the infrastructure dictionary.
-    for station_charge_type, station_count, tco_parameters in stations:
+    for station_count, tco_parameters in stations:
         asset_station = CapexItem(
-            name="Station" if station_charge_type == ChargeType.oppb else "Depot",
+            name="Charging Infrastructure",
             type=CapexItemType.INFRASTRUCTURE,
             useful_life=tco_parameters["useful_life"],
             procurement_cost=tco_parameters["procurement_cost"],
@@ -295,10 +293,11 @@ def get_simulation_period(session, scenario):
     periods_per_year = 365.25 / (simulation_period.total_seconds() / 86400)
     return simulation_period, periods_per_year
 
+    # TODO make the commit process clearer with a context manager
 
 def init_tco_parameters(
-    scenario_id: int,
-    database_url: str,
+    scenario: Scenario,
+    session: Session,
     scenario_tco_parameters: Dict[str, Any],
     vehicle_types: List[Dict[str, Any]],
     battery_types: List[Dict[str, Any]],
@@ -322,137 +321,113 @@ def init_tco_parameters(
 
     """
 
-    # TODO (Should) we make the input parameters optional? If so, we need to handle the case where no parameters are provided.
-    session = Session(create_engine(database_url))
+    # TODO I want session outside the function or context manager of its own?
+
     tco_keys = {"name", "procurement_cost", "useful_life", "cost_escalation"}
 
-    with session:
-        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
-        scenario.tco_parameters = scenario_tco_parameters
-        # Add tco parameters to vehicle types
-        for vt_info in vehicle_types:
-            vt = (
-                session.query(VehicleType)
-                .filter(VehicleType.id == vt_info.get("id"), VehicleType.scenario_id == scenario_id)
-                .all()
+    scenario_id = scenario.id
+    scenario.tco_parameters = scenario_tco_parameters
+    # Add tco parameters to vehicle types
+    for vt_info in vehicle_types:
+        vt = (
+            session.query(VehicleType)
+            .filter(
+                VehicleType.id == vt_info.get("id"),
+                VehicleType.scenario_id == scenario_id,
             )
+            .all()
+        )
 
+        assert len(vt) == 1, (
+            f"There should be only one VehicleType with id {vt_info.get('id')} found in scenario "
+            f"{scenario_id}. Now there are {len(vt)}."
+        )
 
-            assert len(vt) == 1, (f"There should be only one VehicleType with id {vt_info.get('id')} found in scenario "
-                                  f"{scenario_id}. Now there are {len(vt)}.")
+        vt = vt[0]
+        vt_tco_parameters = {
+            key: vt_info.get(key) for key in tco_keys if key in vt_info
+        }
+        vt.tco_parameters = vt_tco_parameters
 
-            vt = vt[0]
-            vt_tco_parameters = {
-                key: vt_info.get(key) for key in tco_keys if key in vt_info
-            }
-            vt.tco_parameters = vt_tco_parameters
+    # Add tco parameters to battery types
+    for bt_info in battery_types:
+        bt_tco_parameters = {
+            key: bt_info.get(key) for key in tco_keys if key in bt_info
+        }
 
-        # Add tco parameters to battery types
-        for bt_info in battery_types:
-            bt_tco_parameters = {
-                key: bt_info.get(key) for key in tco_keys if key in bt_info
-            }
+        if "id" not in bt_info:
+            new_battery_type = BatteryType(
+                scenario_id=scenario_id,
+                specific_mass=bt_info.get("specific_mass", 1.0),
+                chemistry=bt_info.get("chemistry", "unknown"),
+                tco_parameters=bt_tco_parameters,
+            )
+            session.add(new_battery_type)
 
-            if "id" not in bt_info:
-                new_battery_type = BatteryType(
-                    scenario_id=scenario_id,
-                    specific_mass=bt_info.get("specific_mass", 1.0),
-                    chemistry=bt_info.get("chemistry", "unknown"),
-                    tco_parameters=bt_tco_parameters,
+            vehicle_type_ids = bt_info.get("vehicle_type_ids")
+            if len(vehicle_type_ids) == 0:
+                raise ValueError(
+                    "No vehicle type IDs provided for the new battery type. "
+                    "Please provide at least one vehicle type ID."
                 )
-                session.add(new_battery_type)
 
-                vehicle_type_id = bt_info.get("vehicle_type_id")
-                vehicle_type = session.query(VehicleType).filter(
-                    VehicleType.id == vehicle_type_id
-                ).one()
-                assert vehicle_type.scenario_id == scenario_id, (
-                    f"VehicleType with id {vehicle_type_id} is not in scenario {scenario_id}. Please add this battery to the correct VehicleType."
+            for vehicle_type_id in vehicle_type_ids:
+
+                vehicle_type = (
+                    session.query(VehicleType)
+                    .filter(VehicleType.id == vehicle_type_id)
+                    .one()
                 )
+                assert (
+                    vehicle_type.scenario_id == scenario_id
+                ), f"VehicleType with id {vehicle_type_id} is not in scenario {scenario_id}. Please add this battery to the correct VehicleType."
                 vehicle_type.battery_type = new_battery_type
 
-
-
-            else:
-                battery_type_id = bt_info.get("id")
-                battery_type = (
-                    session.query(BatteryType)
-                    .filter(BatteryType.id == battery_type_id, BatteryType.scenario_id == scenario_id,)
-                    .all()
+        else:
+            battery_type_id = bt_info.get("id")
+            battery_type = (
+                session.query(BatteryType)
+                .filter(
+                    BatteryType.id == battery_type_id,
+                    BatteryType.scenario_id == scenario_id,
                 )
-                assert len(battery_type) == 1, (f"There should be only one BatteryType with id {battery_type_id} found in scenario "
-                                  f"{scenario_id}. Now there are {len(battery_type)}.")
+                .all()
+            )
+            assert len(battery_type) == 1, (
+                f"There should be only one BatteryType with id {battery_type_id} found in scenario "
+                f"{scenario_id}. Now there are {len(battery_type)}."
+            )
 
-                battery_type = battery_type[0]
-                battery_type.tco_parameters = bt_tco_parameters
+            battery_type = battery_type[0]
+            battery_type.tco_parameters = bt_tco_parameters
 
-        # Add tco parameters to charging point types
+    # Add tco parameters to charging point types
 
-        for cp_info in charging_point_types:
-            cp_tco_parameters = {
-                key: cp_info.get(key) for key in tco_keys if key in cp_info
-            }
-            if "id" not in cp_info:
-                new_cp_type = ChargingPointType(
-                    name=cp_info.get("name", "Unknown Charging Point"),
-                    scenario_id=scenario_id,
-                    tco_parameters=cp_tco_parameters,
-                )
-                session.add(new_cp_type)
+    # TODO not the final version if it's not decided yet that it can accept different charging point types within areas/stations
 
-                match cp_info.get("type"):
-                    case "depot":
-                        # Add to areas
-                        charging_areas = session.query(Area).filter(
-                            Area.processes.any(Process.electric_power.isnot(None)),
-                            Area.scenario_id == scenario_id,
-                        )
-                        for area in charging_areas:
-                            area.charging_point_type = new_cp_type
-                    case "opportunity":
-                        # Add to stations
-                        charging_station_ids = (
-                            session.query(distinct(Event.station_id))
-                            .filter(
-                                Event.event_type == EventType.CHARGING_OPPORTUNITY,
-                                Event.scenario_id == scenario_id,
-                            )
-                            .all()
-                        )
-                        if len(charging_station_ids) != 0:
-                            for station_id in charging_station_ids:
-                                station = (
-                                    session.query(Station)
-                                    .filter(Station.id == station_id[0])
-                                    .one()
-                                )
-                                station.charging_point_type = new_cp_type
-                    case _:
-                        raise ValueError(
-                            f"Unknown charging point type: {cp_info.get('type')}"
-                        )
-            else:
-                charging_point_type_id = cp_info.get("id")
-                charging_point_type = (
-                    session.query(ChargingPointType)
-                    .filter(ChargingPointType.id == charging_point_type_id, ChargingPointType.scenario_id == scenario_id)
-                    .all()
-                )
-                assert len(charging_point_type)==1, (f"There should be only one ChargingPointType with id {charging_point_type_id} found in scenario "
-                                  f"{scenario_id}. Now there are {len(charging_point_type)}.")
+    for cp_info in charging_point_types:
+        cp_tco_parameters = {
+            key: cp_info.get(key) for key in tco_keys if key in cp_info
+        }
+        if "id" not in cp_info:
+            new_cp_type = ChargingPointType(
+                name=cp_info.get("name", "Unknown Charging Point"),
+                scenario_id=scenario_id,
+                tco_parameters=cp_tco_parameters,
+            )
+            session.add(new_cp_type)
 
-                charging_point_type = charging_point_type[0]
-                charging_point_type.tco_parameters = cp_tco_parameters
-
-        # Add tco parameters to charging infrastructure
-        for infra_info in charging_infrastructure:
-
-            infra_tco_parameters = {
-                key: infra_info.get(key) for key in tco_keys if key in infra_info
-            }
-
-            match infra_info.get("type"):
-                case "station":
+            match cp_info.get("type"):
+                case "depot":
+                    # Add to areas
+                    charging_areas = session.query(Area).filter(
+                        Area.processes.any(Process.electric_power.isnot(None)),
+                        Area.scenario_id == scenario_id,
+                    )
+                    for area in charging_areas:
+                        area.charging_point_type = new_cp_type
+                case "opportunity":
+                    # Add to stations
                     charging_station_ids = (
                         session.query(distinct(Event.station_id))
                         .filter(
@@ -461,31 +436,74 @@ def init_tco_parameters(
                         )
                         .all()
                     )
-                    for station_id in charging_station_ids:
-                        station = (
-                            session.query(Station)
-                            .filter(Station.id == station_id[0])
-                            .one()
-                        )
-                        if station.tco_parameters is None:
-                            station.tco_parameters = infra_tco_parameters
-                case "depot":
-                    depot_stations = (
-                        session.query(Depot.station_id)
-                        .filter(Depot.scenario_id == scenario_id)
-                        .all()
-                    )
-                    for station_id in depot_stations:
-                        station = (
-                            session.query(Station)
-                            .filter(Station.id == station_id[0])
-                            .one()
-                        )
-                        if station.tco_parameters is None:
-                            station.tco_parameters = infra_tco_parameters
+                    if len(charging_station_ids) != 0:
+                        for station_id in charging_station_ids:
+                            station = (
+                                session.query(Station)
+                                .filter(Station.id == station_id[0])
+                                .one()
+                            )
+                            station.charging_point_type = new_cp_type
                 case _:
                     raise ValueError(
-                        f"Unknown infrastructure type: {infra_info.get('type')}"
+                        f"Unknown charging point type: {cp_info.get('type')}"
                     )
+        else:
+            charging_point_type_id = cp_info.get("id")
+            charging_point_type = (
+                session.query(ChargingPointType)
+                .filter(
+                    ChargingPointType.id == charging_point_type_id,
+                    ChargingPointType.scenario_id == scenario_id,
+                )
+                .all()
+            )
+            assert len(charging_point_type) == 1, (
+                f"There should be only one ChargingPointType with id {charging_point_type_id} found in scenario "
+                f"{scenario_id}. Now there are {len(charging_point_type)}."
+            )
 
-        session.commit()
+            charging_point_type = charging_point_type[0]
+            charging_point_type.tco_parameters = cp_tco_parameters
+
+    # Add tco parameters to charging infrastructure
+    for infra_info in charging_infrastructure:
+
+        infra_tco_parameters = {
+            key: infra_info.get(key) for key in tco_keys if key in infra_info
+        }
+
+        match infra_info.get("type"):
+            case "station":
+                charging_station_ids = (
+                    session.query(distinct(Event.station_id))
+                    .filter(
+                        Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                        Event.scenario_id == scenario_id,
+                    )
+                    .all()
+                )
+                for station_id in charging_station_ids:
+                    station = (
+                        session.query(Station).filter(Station.id == station_id[0]).one()
+                    )
+                    if station.tco_parameters is None:
+                        station.tco_parameters = infra_tco_parameters
+            case "depot":
+                depot_stations = (
+                    session.query(Depot.station_id)
+                    .filter(Depot.scenario_id == scenario_id)
+                    .all()
+                )
+                for station_id in depot_stations:
+                    station = (
+                        session.query(Station).filter(Station.id == station_id[0]).one()
+                    )
+                    if station.tco_parameters is None:
+                        station.tco_parameters = infra_tco_parameters
+            case _:
+                raise ValueError(
+                    f"Unknown infrastructure type: {infra_info.get('type')}"
+                )
+
+    session.flush()

@@ -1,9 +1,11 @@
+import os
+from typing import Union, Any, Optional
 from eflips.model import (
     Scenario,
 )
 
 from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 
 from eflips.tco.data_queries import (
     load_capex_items_vehicle,
@@ -12,9 +14,16 @@ from eflips.tco.data_queries import (
     get_annual_fleet_mileage,
     calculate_total_driver_hours,
     get_total_energy_consumption,
+    init_tco_parameters,
 )
 
-from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType, net_present_value
+from eflips.tco.cost_items import (
+    CapexItem,
+    OpexItem,
+    CapexItemType,
+    OpexItemType,
+    net_present_value,
+)
 
 import pandas as pd
 
@@ -25,51 +34,109 @@ class TCOCalculator:
     It contains methods to calculate the CAPEX and OPEX sections of the TCO.
     """
 
-    def __init__(self, scenario_id, database_url, capex_items=None, opex_items=None):
+    def __init__(
+        self,
+        scenario: Union[Scenario, int, Any],
+        database_url: Optional[str] = None,
+        tco_parameters: Optional[dict] = None,
+        capex_items=None,
+        opex_items=None,
+    ):
         """
 
         :param scenario:
         :param database_url:
         """
         # create session
-        session = Session(create_engine(database_url))
-        with session:
+
+        engine = None
+        session = None
+        managed_session = False
+        if isinstance(scenario, Scenario):
+            session = inspect(scenario).session
+            self.scenario = scenario
+        elif isinstance(scenario, int) or hasattr(scenario, "id"):
+
+            if isinstance(scenario, int):
+                scenario_id = scenario
+            else:
+                scenario_id = scenario.id
+
+            if database_url is None:
+                if "DATABASE_URL" in os.environ:
+                    database_url = os.environ.get("DATABASE_URL")
+                else:
+                    raise ValueError("No database URL specified.")
+
+            engine = create_engine(database_url)
+            session = Session(engine)
             self.scenario = (
                 session.query(Scenario).filter(Scenario.id == scenario_id).one()
             )
+            managed_session = True
 
-            annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
-            self.annual_fleet_mileage = annual_fleet_mileage
 
-            if capex_items is None:
-                self._load_capex_items_from_db(session)
+        if tco_parameters is not None:
+            scenario_tco_parameters = tco_parameters.get(
+                "scenario_tco_parameters", None
+            )
+            vehicle_type_parameters = tco_parameters.get("vehicle_types", None)
+            battery_type_parameters = tco_parameters.get("battery_types", None)
+            charging_point_parameters = tco_parameters.get(
+                "charging_point_types", None
+            )
+            infrastructure_parameters = tco_parameters.get(
+                "charging_infrastructure", None
+            )
 
-            else:
-                raise NotImplementedError(
-                    "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
-                )
-            if opex_items is None:
+            init_tco_parameters(
+                self.scenario,
+                session,
+                scenario_tco_parameters=scenario_tco_parameters,
+                vehicle_types=vehicle_type_parameters,
+                battery_types=battery_type_parameters,
+                charging_point_types=charging_point_parameters,
+                charging_infrastructure=infrastructure_parameters,
+            )
 
-                self.opex_items = self._load_opex_items_from_db(
-                        session)
-            else:
-                raise NotImplementedError(
-                    "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
-                )
+        annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
 
-            # initialize scenario related data
-            self.project_duration = self.scenario.tco_parameters["project_duration"]
-            self.interest_rate = self.scenario.tco_parameters["interest_rate"]
-            self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
+        self.annual_fleet_mileage = annual_fleet_mileage
 
-            # Initialize the output values
-            self.total_capex = 0
-            self.total_opex = 0
-            self.tco_over_project_duration = 0
-            self.tco_per_distance = 0  # TODO better name?
-            self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
+        if capex_items is None:
+            self._load_capex_items_from_db(session)
 
-        session.close()
+        else:
+            raise NotImplementedError(
+                "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
+            )
+        if opex_items is None:
+
+            self.opex_items = self._load_opex_items_from_db(session)
+        else:
+            raise NotImplementedError(
+                "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
+            )
+
+        # initialize scenario related data
+        self.project_duration = self.scenario.tco_parameters["project_duration"]
+        self.interest_rate = self.scenario.tco_parameters["interest_rate"]
+        self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
+
+        # Initialize the output values
+        self.total_capex = 0
+        self.total_opex = 0
+        self.tco_over_project_duration = 0
+        self.tco_per_distance = 0  # TODO better name?
+        self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
+
+        if managed_session:
+            if session is not None:
+                session.commit()
+                session.close()
+            # If we created the session, we should close it
+            if engine is not None:
+                engine.dispose()
 
     def calculate(self):
         """
@@ -168,8 +235,6 @@ class TCOCalculator:
             )
             bottom += cost
             ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
-
-
 
         ax.set_ylabel("Specific Cost (EUR/km)")
         ax.set_xlim(left=-0.5, right=0.5)
