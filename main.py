@@ -46,11 +46,11 @@ if __name__ == "__main__":
 
     battery_types = [
         {
-            "name": "Ebusco 3.0 12 large battery",
+            "name": "Ebusco 3.0 12 and 18 large battery",
             "procurement_cost": 315,
             "useful_life": 7,
             "cost_escalation": -0.03,
-            "vehicle_type_id": 18,
+            "vehicle_type_ids": [18, 20]
             # "id": 67,
         },
         {
@@ -58,17 +58,17 @@ if __name__ == "__main__":
             "procurement_cost": 285,
             "useful_life": 7,
             "cost_escalation": -0.03,
-            "vehicle_type_id": 19,
+            "vehicle_type_ids": [19],
             # "id": 68,
         },
-        {
-            "name": "Alexander Dennis Enviro500EV large battery",
-            "procurement_cost": 315,
-            "useful_life": 7,
-            "cost_escalation": -0.03,
-            "vehicle_type_id": 20,
-            # "id": 69,
-        },
+        # {
+        #     "name": "Alexander Dennis Enviro500EV large battery",
+        #     "procurement_cost": 315,
+        #     "useful_life": 7,
+        #     "cost_escalation": -0.03,
+        #     "vehicle_type_id": 20,
+        #     # "id": 69,
+        # },
     ]
 
     charging_point_types = [
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         "maint_infr_cost": 1000,
         # Taxes and insurance cost in EUR per year and bus
         "taxes": 278,
-        "insurance": 9693, # DCO #9703, # EBU
+        "insurance": 9693,  # DCO #9703, # EBU
         # Cost escalation factors (cef / pef)
         "pef_general": 0.02,
         "pef_wages": 0.025,
@@ -128,21 +128,24 @@ if __name__ == "__main__":
         "pef_insurance": 0.02,
     }
 
-    init_tco_parameters(
-        scenario_id=SCENARIO_ID,
-        database_url=DATABASE_URL,
-        scenario_tco_parameters=scenario_tco_parameters,
-        vehicle_types=vehicle_types,
-        battery_types=battery_types,
-        charging_point_types=charging_point_types,
-        charging_infrastructure=charging_infrastructure,
-    )
+    tco_params = {
+        "vehicle_types": vehicle_types,
+        "battery_types": battery_types,
+        "charging_point_types": charging_point_types,
+        "charging_infrastructure": charging_infrastructure,
+        "scenario_tco_parameters": scenario_tco_parameters,
+    }
 
     tco_calculator_s1 = TCOCalculator(
-        scenario_id=SCENARIO_ID, database_url=DATABASE_URL
+        scenario=SCENARIO_ID, database_url=DATABASE_URL, tco_parameters=tco_params
     )
 
     tco_calculator_s1.calculate()
+
+    # Something like:
+    # tco_params = {...}
+    # tco_calculator_s1 = TCOCalculator(scenario_id=SCENARIO_ID, database_url=DATABASE_URL, tco_params=tco_params)
+    # tco_calculator_s1.calculate()
 
     print(tco_calculator_s1.tco_per_distance)
     tco_calculator_s1.visualize()
