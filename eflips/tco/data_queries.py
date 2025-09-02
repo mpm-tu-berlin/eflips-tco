@@ -320,8 +320,8 @@ def get_simulation_period(session, scenario):
 
 
 def init_tco_parameters(
-    scenario_id: int,
-    database_url: str,
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
     scenario_tco_parameters: Optional[Dict[str, Any]] = None,
     vehicle_types: Optional[List[Dict[str, Any]]] = None,
     battery_types: Optional[List[Dict[str, Any]]] = None,
@@ -345,25 +345,22 @@ def init_tco_parameters(
 
     """
 
-
-    session = Session(create_engine(database_url))
     tco_keys = {"name", "procurement_cost", "useful_life", "cost_escalation"}
 
-    with session:
-        scenario = session.query(Scenario).filter(Scenario.id == scenario_id).one()
+    with create_session(scenario, database_url) as (session, scenario):
         scenario.tco_parameters = scenario_tco_parameters
         # Add tco parameters to vehicle types
         if vehicle_types is not None:
             for vt_info in vehicle_types:
                 vt = (
                     session.query(VehicleType)
-                    .filter(VehicleType.id == vt_info.get("id"), VehicleType.scenario_id == scenario_id)
+                    .filter(VehicleType.id == vt_info.get("id"), VehicleType.scenario_id == scenario.id)
                     .all()
                 )
 
 
                 assert len(vt) == 1, (f"There should be only one VehicleType with id {vt_info.get('id')} found in scenario "
-                                      f"{scenario_id}. Now there are {len(vt)}.")
+                                      f"{scenario.id}. Now there are {len(vt)}.")
 
                 vt = vt[0]
                 vt_tco_parameters = {
@@ -380,7 +377,7 @@ def init_tco_parameters(
 
                 if "id" not in bt_info:
                     new_battery_type = BatteryType(
-                        scenario_id=scenario_id,
+                        scenario_id=scenario.id,
                         specific_mass=bt_info.get("specific_mass", 1.0),
                         chemistry=bt_info.get("chemistry", "unknown"),
                         tco_parameters=bt_tco_parameters,
@@ -391,8 +388,8 @@ def init_tco_parameters(
                     vehicle_type = session.query(VehicleType).filter(
                         VehicleType.id == vehicle_type_id
                     ).one()
-                    assert vehicle_type.scenario_id == scenario_id, (
-                        f"VehicleType with id {vehicle_type_id} is not in scenario {scenario_id}. Please add this battery to the correct VehicleType."
+                    assert vehicle_type.scenario_id == scenario.id, (
+                        f"VehicleType with id {vehicle_type_id} is not in scenario {scenario.id}. Please add this battery to the correct VehicleType."
                     )
                     vehicle_type.battery_type = new_battery_type
 
@@ -400,11 +397,11 @@ def init_tco_parameters(
                     battery_type_id = bt_info.get("id")
                     battery_type = (
                         session.query(BatteryType)
-                        .filter(BatteryType.id == battery_type_id, BatteryType.scenario_id == scenario_id,)
+                        .filter(BatteryType.id == battery_type_id, BatteryType.scenario_id == scenario.id,)
                         .all()
                     )
                     assert len(battery_type) == 1, (f"There should be only one BatteryType with id {battery_type_id} found in scenario "
-                                      f"{scenario_id}. Now there are {len(battery_type)}.")
+                                      f"{scenario.id}. Now there are {len(battery_type)}.")
 
                     battery_type = battery_type[0]
                     battery_type.tco_parameters = bt_tco_parameters
@@ -419,7 +416,7 @@ def init_tco_parameters(
                 if "id" not in cp_info:
                     new_cp_type = ChargingPointType(
                         name=cp_info.get("name", "Unknown Charging Point"),
-                        scenario_id=scenario_id,
+                        scenario_id=scenario.id,
                         tco_parameters=cp_tco_parameters,
                     )
                     session.add(new_cp_type)
@@ -429,7 +426,7 @@ def init_tco_parameters(
                             # Add to areas
                             charging_areas = session.query(Area).filter(
                                 Area.processes.any(Process.electric_power.isnot(None)),
-                                Area.scenario_id == scenario_id,
+                                Area.scenario_id == scenario.id,
                             )
                             for area in charging_areas:
                                 area.charging_point_type = new_cp_type
@@ -439,7 +436,7 @@ def init_tco_parameters(
                                 session.query(distinct(Event.station_id))
                                 .filter(
                                     Event.event_type == EventType.CHARGING_OPPORTUNITY,
-                                    Event.scenario_id == scenario_id,
+                                    Event.scenario_id == scenario.id,
                                 )
                                 .all()
                             )
@@ -459,11 +456,11 @@ def init_tco_parameters(
                     charging_point_type_id = cp_info.get("id")
                     charging_point_type = (
                         session.query(ChargingPointType)
-                        .filter(ChargingPointType.id == charging_point_type_id, ChargingPointType.scenario_id == scenario_id)
+                        .filter(ChargingPointType.id == charging_point_type_id, ChargingPointType.scenario_id == scenario.id)
                         .all()
                     )
                     assert len(charging_point_type)==1, (f"There should be only one ChargingPointType with id {charging_point_type_id} found in scenario "
-                                      f"{scenario_id}. Now there are {len(charging_point_type)}.")
+                                      f"{scenario.id}. Now there are {len(charging_point_type)}.")
 
                     charging_point_type = charging_point_type[0]
                     charging_point_type.tco_parameters = cp_tco_parameters
@@ -482,7 +479,7 @@ def init_tco_parameters(
                             session.query(distinct(Event.station_id))
                             .filter(
                                 Event.event_type == EventType.CHARGING_OPPORTUNITY,
-                                Event.scenario_id == scenario_id,
+                                Event.scenario_id == scenario.id,
                             )
                             .all()
                         )
@@ -497,7 +494,7 @@ def init_tco_parameters(
                     case "depot":
                         depot_stations = (
                             session.query(Depot.station_id)
-                            .filter(Depot.scenario_id == scenario_id)
+                            .filter(Depot.scenario_id == scenario.id)
                             .all()
                         )
                         for station_id in depot_stations:

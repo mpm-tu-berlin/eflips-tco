@@ -16,6 +16,7 @@ from eflips.tco.data_queries import (
 )
 
 from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType, net_present_value
+from eflips.tco.util import create_session
 
 import pandas as pd
 
@@ -26,17 +27,16 @@ class TCOCalculator:
     It contains methods to calculate the CAPEX and OPEX sections of the TCO.
     """
 
-    def __init__(self, scenario_id, database_url, energy_consumption_mode, capex_items=None, opex_items=None):
+    def __init__(self, scenario, database_url: Optional[str] = None, energy_consumption_mode="simulated", capex_items=None, opex_items=None):
         """
 
         :param scenario:
         :param database_url:
         """
         # create session
-        session = Session(create_engine(database_url))
-        with session:
+        with create_session(scenario, database_url) as (session, scenario):
             self.scenario = (
-                session.query(Scenario).filter(Scenario.id == scenario_id).one()
+                session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
 
             annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
