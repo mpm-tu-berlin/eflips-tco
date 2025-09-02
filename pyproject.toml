@@ -4,8 +4,10 @@ name = "eflips-tco"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Julian Dubiel", email = "julian.dubiel@gmx.de"}
+    {name = "Julian Dubiel", email = "julian.dubiel@gmx.de"},
+    {name = "Shuyao Guo", email = "shuyao.guo@tu-berlin.de"}
 ]
+license = {text = "AGPL-3.0-or-later"}
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = [
@@ -17,7 +19,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-package-mode = false
+packages = [{ include = "eflips/tco" }]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
