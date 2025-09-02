@@ -7,13 +7,14 @@ running this, the essential functionality of the project should be executed.
 
 from eflips.tco.data_queries import init_tco_parameters
 import os
-import json
-
 
 # Environment variables
 DATABASE_URL = os.environ.get("DATABASE_URL")
-SCENARIO_ID = 4
+SCENARIO_ID = 1
 from eflips.tco.tco_calculator import TCOCalculator
+
+
+
 
 
 if __name__ == "__main__":
@@ -22,24 +23,24 @@ if __name__ == "__main__":
 
     vehicle_types = [
         {
-            "id": 18,
+            "id": 12,
             "name": "Ebusco 3.0 12 large battery",
             "useful_life": 14,
             "procurement_cost": 340000.0,
             "cost_escalation": 0.02,
         },
         {
-            "id": 19,
+            "id": 13,
             "name": "Solaris Urbino 18 large battery",
             "useful_life": 14,
-            "procurement_cost": 603000.0,
+            "procurement_cost": 580000.0,
             "cost_escalation": 0.02,
         },
         {
-            "id": 20,
+            "id": 14,
             "name": "Alexander Dennis Enviro500EV large battery",
             "useful_life": 14,
-            "procurement_cost": 650000.0,
+            "procurement_cost": 580000.0,
             "cost_escalation": 0.02,
         },
     ]
@@ -47,27 +48,24 @@ if __name__ == "__main__":
     battery_types = [
         {
             "name": "Ebusco 3.0 12 large battery",
-            "procurement_cost": 315,
+            "procurement_cost": 190,
             "useful_life": 7,
             "cost_escalation": -0.03,
-            "vehicle_type_id": 18,
-            # "id": 67,
+            "vehicle_type_id": 12,
         },
         {
             "name": "Solaris Urbino 18 large battery",
-            "procurement_cost": 285,
+            "procurement_cost": 190,
             "useful_life": 7,
             "cost_escalation": -0.03,
-            "vehicle_type_id": 19,
-            # "id": 68,
+            "vehicle_type_id": 13,
         },
         {
             "name": "Alexander Dennis Enviro500EV large battery",
-            "procurement_cost": 315,
+            "procurement_cost": 190,
             "useful_life": 7,
             "cost_escalation": -0.03,
-            "vehicle_type_id": 20,
-            # "id": 69,
+            "vehicle_type_id": 14,
         },
     ]
 
@@ -78,15 +76,13 @@ if __name__ == "__main__":
             "procurement_cost": 100000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
-            # "id": 50,
         },
         {
             "type": "opportunity",
             "name": "Opportunity Charging Point",
-            "procurement_cost": 275000.0,
+            "procurement_cost": 250000.0,
             "useful_life": 20,
             "cost_escalation": 0.02,
-            # "id": 51,
         },
     ]
 
@@ -94,7 +90,7 @@ if __name__ == "__main__":
         {
             "type": "depot",
             "name": "Depot Charging Infrastructure",
-            "procurement_cost": 3400000.0,
+            "procurement_cost": 3400000.0, # TODO
             "useful_life": 20,
             "cost_escalation": 0.02,
         },
@@ -126,6 +122,9 @@ if __name__ == "__main__":
         "pef_wages": 0.025,
         "pef_fuel": 0.038,
         "pef_insurance": 0.02,
+        "const_energy_consumption": {
+            "12": 1.48, "13": 2.16, "14": 2.16,
+        }
     }
 
     init_tco_parameters(
@@ -138,11 +137,15 @@ if __name__ == "__main__":
         charging_infrastructure=charging_infrastructure,
     )
 
-    tco_calculator_s1 = TCOCalculator(
-        scenario_id=SCENARIO_ID, database_url=DATABASE_URL
+    tco_calculator = TCOCalculator(
+        scenario_id=SCENARIO_ID, database_url=DATABASE_URL, energy_consumption_mode="constant",
     )
 
-    tco_calculator_s1.calculate()
+    tco_calculator.calculate()
 
-    print(tco_calculator_s1.tco_per_distance)
-    tco_calculator_s1.visualize()
+    print(tco_calculator.tco_unit_distance)
+    tco_calculator.visualize()
+
+
+
+

@@ -1,5 +1,5 @@
 from eflips.model import (
-    Scenario,
+    Scenario, Trip, Rotation,
 )
 
 from sqlalchemy.orm import Session
@@ -11,7 +11,8 @@ from eflips.tco.data_queries import (
     load_capex_items_infrastructure,
     get_annual_fleet_mileage,
     calculate_total_driver_hours,
-    get_total_energy_consumption,
+    calc_energy_consumption_simulated,
+    get_mileage_per_vehicle_type,
 )
 
 from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType, net_present_value
@@ -25,7 +26,7 @@ class TCOCalculator:
     It contains methods to calculate the CAPEX and OPEX sections of the TCO.
     """
 
-    def __init__(self, scenario_id, database_url, capex_items=None, opex_items=None):
+    def __init__(self, scenario_id, database_url, energy_consumption_mode, capex_items=None, opex_items=None):
         """
 
         :param scenario:
@@ -40,6 +41,14 @@ class TCOCalculator:
 
             annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
             self.annual_fleet_mileage = annual_fleet_mileage
+            self.energy_consumption_mode = energy_consumption_mode
+            if self.energy_consumption_mode == "constant":
+                assert "const_energy_consumption" in self.scenario.tco_parameters, (
+                    "const_energy_consumption must be provided in the scenario tco_parameters when energy_consumption_mode is 'constant'"
+                )
+
+                const_energy_consumption = self.scenario.tco_parameters["const_energy_consumption"]
+                self.const_energy_consumption = const_energy_consumption
 
             if capex_items is None:
                 self._load_capex_items_from_db(session)
@@ -66,7 +75,7 @@ class TCOCalculator:
             self.total_capex = 0
             self.total_opex = 0
             self.tco_over_project_duration = 0
-            self.tco_per_distance = 0  # TODO better name?
+            self.tco_unit_distance = 0
             self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
 
         session.close()
@@ -127,7 +136,7 @@ class TCOCalculator:
         # TODO do we need this? maybe later
 
         # Specific TCO over project duration
-        self.tco_per_distance = self.tco_over_project_duration / (
+        self.tco_unit_distance = self.tco_over_project_duration / (
             self.annual_fleet_mileage * self.project_duration
         )
 
@@ -139,26 +148,32 @@ class TCOCalculator:
         )
         self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
 
-    def visualize(self):
-        """
-        Visualize the TCO results.
-        """
-
         tco_by_type = {}
 
-        # TODO sort that into capex and opex items
         types = set(self.tco_by_item["type"].values)
         for t in types:
             tco_by_type[t] = self.tco_by_item[self.tco_by_item["type"] == t][
                 "Specific Cost"
             ].sum()
 
-        # Plot a stacked bar chart of the TCO by type
+        self.tco_by_type = tco_by_type
+
+        tco_by_type_without_staff = tco_by_type.copy()
+        tco_by_type_without_staff.pop("STAFF", None)
+        self.tco_by_type_without_staff = tco_by_type_without_staff
+
+
+    def visualize(self):
+        """
+        Visualize the TCO results.
+        """
+
+
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(6, 8))
         bottom = 0
-        for item_type, cost in tco_by_type.items():
+        for item_type, cost in self.tco_by_type.items():
             current_bar = ax.bar(
                 "Total TCO",
                 cost,
@@ -169,20 +184,14 @@ class TCOCalculator:
             bottom += cost
             ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
 
-
-
+        total = self.tco_unit_distance
+        ax.text(0, total + 0.05, str(round(total, 2)), ha="center", va="bottom", fontweight="bold")
         ax.set_ylabel("Specific Cost (EUR/km)")
         ax.set_xlim(left=-0.5, right=0.5)
         ax.set_title("Total Cost of Ownership by Type")
         ax.legend()
         plt.savefig("tco_by_type.png")
-        # dump the tco_by_type to a json file
-        import json
 
-        with open("tco_by_type.json", "w") as f:
-            json.dump(tco_by_type, f, indent=4)
-        # Save the DataFrame to a CSV file
-        self.tco_by_item.to_csv("tco_by_item.csv", index=False)
 
     def _load_capex_items_from_db(self, session):
         # Get the number of vehicles used in the simulation by vehicle type including the tco parameters.
@@ -225,7 +234,21 @@ class TCOCalculator:
         list_opex_items.append(staff_cost)
 
         # Get the total energy consumption
-        total_energy_consumption = get_total_energy_consumption(session, self.scenario)
+        match self.energy_consumption_mode:
+            case "constant":
+                total_energy_consumption = 0.0
+                mileage_per_vt = get_mileage_per_vehicle_type(session, self.scenario)
+                for vid, consumption in self.const_energy_consumption.items():
+                    if vid in mileage_per_vt:
+                        total_energy_consumption += consumption * mileage_per_vt[vid]
+
+
+            case "simulated":
+                total_energy_consumption = calc_energy_consumption_simulated(session, self.scenario)
+            case _:
+                raise ValueError(f"Unknown energy consumption mode: {self.energy_consumption_mode}")
+        # total_energy_consumption = calc_energy_consumption_simulated(session, self.scenario)
+
         # TODO maybe change it to energy_cost
         fuel_cost = OpexItem(
             name="Fuel Cost",
