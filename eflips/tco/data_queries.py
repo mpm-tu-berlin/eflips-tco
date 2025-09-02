@@ -1,6 +1,6 @@
 import datetime
 import warnings
-from typing import List, Tuple, Any, Dict, Optional
+from typing import List, Tuple, Any, Dict, Optional, Union
 from eflips.model import (
     Vehicle,
     Station,
@@ -29,6 +29,7 @@ import time
 import warnings as w
 
 from eflips.tco.cost_items import CapexItemType, CapexItem, OpexItem
+from eflips.tco.util import create_session
 from eflips.eval.output.prepare import power_and_occupancy
 
 
@@ -274,17 +275,18 @@ def calculate_total_driver_hours(
     session, scenario, annual_hours_per_driver=1600, buffer=0.1
 ):
     # Get the driver hours over the simulation period as the sum of the duration of all driving events.
-    driver_hours = (
-        session.query(func.sum(Event.time_end - Event.time_start))
-        .filter(
-            Event.scenario_id == scenario.id,
-            or_(
-                Event.event_type == "DRIVING",
-                Event.event_type == "CHARGING_OPPORTUNITY",
-            ),
-        )
-        .one()[0]
-    )
+
+    driver_hours = datetime.timedelta(seconds=0)
+    driving_and_opcharge_events = session.query(Event).filter(
+        Event.scenario_id == scenario.id,
+        or_(
+            Event.event_type == "DRIVING",
+            Event.event_type == "CHARGING_OPPORTUNITY",
+        ),
+    ).all()
+
+    for event in driving_and_opcharge_events:
+        driver_hours += event.time_end - event.time_start
     # Annual driver hours are calculated
     annual_driver_hours = (
         get_simulation_period(session=session, scenario=scenario)[1]
@@ -489,8 +491,7 @@ def init_tco_parameters(
                                 .filter(Station.id == station_id[0])
                                 .one()
                             )
-                            if station.tco_parameters is None:
-                                station.tco_parameters = infra_tco_parameters
+                            station.tco_parameters = infra_tco_parameters
                     case "depot":
                         depot_stations = (
                             session.query(Depot.station_id)
@@ -503,8 +504,7 @@ def init_tco_parameters(
                                 .filter(Station.id == station_id[0])
                                 .one()
                             )
-                            if station.tco_parameters is None:
-                                station.tco_parameters = infra_tco_parameters
+                            station.tco_parameters = infra_tco_parameters
                     case _:
                         raise ValueError(
                             f"Unknown infrastructure type: {infra_info.get('type')}"

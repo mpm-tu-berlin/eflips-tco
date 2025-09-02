@@ -2,8 +2,7 @@ from eflips.model import (
     Scenario, Trip, Rotation,
 )
 
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from typing import Optional
 
 from eflips.tco.data_queries import (
     load_capex_items_vehicle,
@@ -78,7 +77,6 @@ class TCOCalculator:
             self.tco_unit_distance = 0
             self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
 
-        session.close()
 
     def calculate(self):
         """
