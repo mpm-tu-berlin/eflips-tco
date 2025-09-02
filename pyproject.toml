@@ -4,20 +4,22 @@ name = "eflips-tco"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Julian Dubiel", email = "julian.dubiel@gmx.de"}
+    {name = "Julian Dubiel", email = "julian.dubiel@gmx.de"},
+    {name = "Shuyao Guo", email = "shuyao.guo@tu-berlin.de"}
 ]
+license = {text = "AGPL-3.0-or-later"}
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.12,<3.14"
 dependencies = [
 
     "eflips-eval (>=1.7.2,<2.0.0)",
     "matplotlib (==3.9.0)",
     "pandas (>=2.3.0,<3.0.0)",
-    "eflips-model (>=9.0.0,<10.0.0)",
+    "eflips-model (>=9.0.0,<11.0.0)",
 ]
 
 [tool.poetry]
-package-mode = false
+packages = [{ include = "eflips/tco" }]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
