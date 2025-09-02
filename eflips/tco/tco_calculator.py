@@ -57,9 +57,7 @@ class TCOCalculator:
                     "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
                 )
             if opex_items is None:
-
-                self.opex_items = self._load_opex_items_from_db(
-                        session)
+                self._load_opex_items_from_db(session)
             else:
                 raise NotImplementedError(
                     "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
@@ -304,5 +302,5 @@ class TCOCalculator:
             cost_escalation=scenario_tco_parameters["pef_general"],
         )
         list_opex_items.append(maint_cost_infra)
+        self.opex_items = list_opex_items
 
-        return list_opex_items
