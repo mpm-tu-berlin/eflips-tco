@@ -2,8 +2,7 @@ from eflips.model import (
     Scenario, Trip, Rotation,
 )
 
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from typing import Optional
 
 from eflips.tco.data_queries import (
     load_capex_items_vehicle,
@@ -16,6 +15,7 @@ from eflips.tco.data_queries import (
 )
 
 from eflips.tco.cost_items import CapexItem, OpexItem, CapexItemType, OpexItemType, net_present_value
+from eflips.tco.util import create_session
 
 import pandas as pd
 
@@ -26,17 +26,16 @@ class TCOCalculator:
     It contains methods to calculate the CAPEX and OPEX sections of the TCO.
     """
 
-    def __init__(self, scenario_id, database_url, energy_consumption_mode, capex_items=None, opex_items=None):
+    def __init__(self, scenario, database_url: Optional[str] = None, energy_consumption_mode="simulated", capex_items=None, opex_items=None):
         """
 
         :param scenario:
         :param database_url:
         """
         # create session
-        session = Session(create_engine(database_url))
-        with session:
+        with create_session(scenario, database_url) as (session, scenario):
             self.scenario = (
-                session.query(Scenario).filter(Scenario.id == scenario_id).one()
+                session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
 
             annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
@@ -58,9 +57,7 @@ class TCOCalculator:
                     "Using your own list of dictonary then setting up list of capex items is not implemented yet. Please use the database to load the capex items."
                 )
             if opex_items is None:
-
-                self.opex_items = self._load_opex_items_from_db(
-                        session)
+                self._load_opex_items_from_db(session)
             else:
                 raise NotImplementedError(
                     "Using your own list of dictonary then setting up list of opex items is not implemented yet. Please use the database to load the opex items."
@@ -78,7 +75,6 @@ class TCOCalculator:
             self.tco_unit_distance = 0
             self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
 
-        session.close()
 
     def calculate(self):
         """
@@ -152,9 +148,9 @@ class TCOCalculator:
 
         types = set(self.tco_by_item["type"].values)
         for t in types:
-            tco_by_type[t] = self.tco_by_item[self.tco_by_item["type"] == t][
+            tco_by_type[t] = float(self.tco_by_item[self.tco_by_item["type"] == t][
                 "Specific Cost"
-            ].sum()
+            ].sum())
 
         self.tco_by_type = tco_by_type
 
@@ -306,5 +302,5 @@ class TCOCalculator:
             cost_escalation=scenario_tco_parameters["pef_general"],
         )
         list_opex_items.append(maint_cost_infra)
+        self.opex_items = list_opex_items
 
-        return list_opex_items

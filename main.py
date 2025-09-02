@@ -128,7 +128,7 @@ if __name__ == "__main__":
     }
 
     init_tco_parameters(
-        scenario_id=SCENARIO_ID,
+        scenario=SCENARIO_ID,
         database_url=DATABASE_URL,
         scenario_tco_parameters=scenario_tco_parameters,
         vehicle_types=vehicle_types,
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     )
 
     tco_calculator = TCOCalculator(
-        scenario_id=SCENARIO_ID, database_url=DATABASE_URL, energy_consumption_mode="constant",
+        scenario=SCENARIO_ID, database_url=DATABASE_URL, energy_consumption_mode="constant",
     )
 
     tco_calculator.calculate()
