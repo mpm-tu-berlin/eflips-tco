@@ -150,9 +150,9 @@ class TCOCalculator:
 
         types = set(self.tco_by_item["type"].values)
         for t in types:
-            tco_by_type[t] = self.tco_by_item[self.tco_by_item["type"] == t][
+            tco_by_type[t] = float(self.tco_by_item[self.tco_by_item["type"] == t][
                 "Specific Cost"
-            ].sum()
+            ].sum())
 
         self.tco_by_type = tco_by_type
 
