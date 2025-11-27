@@ -341,7 +341,10 @@ def init_tco_parameters(
 
     """
 
-    tco_keys = {"name", "procurement_cost", "useful_life", "cost_escalation"}
+    tco_keys = {"name", "procurement_cost", "useful_life", "cost_escalation","average_electricity_consumption",
+                "procurement_cost_diesel_equivalent",
+                "cost_escalation_diesel_equivalent",
+                "average_diesel_consumption"}
 
     with create_session(scenario, database_url) as (session, scenario):
         scenario.tco_parameters = scenario_tco_parameters
@@ -507,4 +510,4 @@ def init_tco_parameters(
                             f"Unknown infrastructure type: {infra_info.get('type')}"
                         )
 
-        session.commit()
+        session.flush()
