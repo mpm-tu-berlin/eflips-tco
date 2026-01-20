@@ -19,8 +19,7 @@ def calculate_tco(
         database.
     :param database_url: Optional database URL to connect to if the scenario is provided as an integer.
     :return: A dictionary with TCO values categorized by type: infrastructure, staff, battery, maintenance, vehicle,
-        energy and other (e.g.taxes and insurance). The results are categorized by type in the unit of EUR per
-        vehicle kilometer over the project duration.
+        energy and other (e.g.taxes and insurance). The unit is EUR per vehicle kilometer over the project duration.
 
     """
     logger = logging.getLogger(__name__)
