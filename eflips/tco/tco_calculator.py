@@ -79,7 +79,8 @@ class TCOCalculator:
     def calculate(self):
         """
         Calculate the total cost of ownership based on the input data provided in the dictionaries.
-        :return: A dictionary containing the TCO results.
+        :return: A dictionary containing the TCO results. The results are categorized by type in the unit of EUR per
+        vehicle kilometer over the project duration.
         """
 
         list_of_items = []
