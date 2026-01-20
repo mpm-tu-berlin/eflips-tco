@@ -7,7 +7,6 @@ from eflips.model import (
     VehicleType,
     Route,
     Trip,
-
     BatteryType,
     ChargeType,
     Scenario,
@@ -16,7 +15,8 @@ from eflips.model import (
     Process,
     Event,
     EventType,
-    Depot, Rotation,
+    Depot,
+    Rotation,
 )
 
 from sqlalchemy import or_, and_, distinct
@@ -213,7 +213,7 @@ def calc_energy_consumption_simulated(session, scenario):
 
     # Calculate the annual energy consumption
     energy_consumption = (
-            result[0] * get_simulation_period(session=session, scenario=scenario)[1]
+        result[0] * get_simulation_period(session=session, scenario=scenario)[1]
     )
 
     return energy_consumption
@@ -248,44 +248,54 @@ def get_annual_fleet_mileage(session, scenario) -> float:
 
 
 def get_mileage_per_vehicle_type(session, scenario) -> Dict[int, Tuple[float, float]]:
-    """
-
-    """
+    """ """
 
     vt_mileage = (
-        session.query(Rotation.vehicle_type_id, func.sum(Route.distance)).join(Trip, Trip.route_id == Route.id).
-        join(Rotation, Trip.rotation_id == Rotation.id).
-        filter(Rotation.scenario_id == scenario.id).group_by(Rotation.vehicle_type_id).all())
+        session.query(Rotation.vehicle_type_id, func.sum(Route.distance))
+        .join(Trip, Trip.route_id == Route.id)
+        .join(Rotation, Trip.rotation_id == Rotation.id)
+        .filter(Rotation.scenario_id == scenario.id)
+        .group_by(Rotation.vehicle_type_id)
+        .all()
+    )
 
     mileage_per_vt = {}
     for vt, mileage in vt_mileage:
-        mileage_per_vt[str(vt)] = mileage / 1000 * get_simulation_period(session=session, scenario=scenario)[1]
+        mileage_per_vt[str(vt)] = (
+            mileage
+            / 1000
+            * get_simulation_period(session=session, scenario=scenario)[1]
+        )
 
     return mileage_per_vt
 
 
 # Calculate the annual driver hours.
 def calculate_total_driver_hours(
-        session, scenario, annual_hours_per_driver=1600, buffer=0.1
+    session, scenario, annual_hours_per_driver=1600, buffer=0.1
 ):
     # Get the driver hours over the simulation period as the sum of the duration of all driving events.
 
     driver_hours = datetime.timedelta(seconds=0)
-    driving_and_opcharge_events = session.query(Event).filter(
-        Event.scenario_id == scenario.id,
-        or_(
-            Event.event_type == "DRIVING",
-            Event.event_type == "CHARGING_OPPORTUNITY",
-        ),
-    ).all()
+    driving_and_opcharge_events = (
+        session.query(Event)
+        .filter(
+            Event.scenario_id == scenario.id,
+            or_(
+                Event.event_type == "DRIVING",
+                Event.event_type == "CHARGING_OPPORTUNITY",
+            ),
+        )
+        .all()
+    )
 
     for event in driving_and_opcharge_events:
         driver_hours += event.time_end - event.time_start
     # Annual driver hours are calculated
     annual_driver_hours = (
-            get_simulation_period(session=session, scenario=scenario)[1]
-            * driver_hours.total_seconds()
-            / 3600
+        get_simulation_period(session=session, scenario=scenario)[1]
+        * driver_hours.total_seconds()
+        / 3600
     )
 
     number_drivers = (annual_driver_hours * (1 + buffer)) // annual_hours_per_driver
@@ -316,13 +326,13 @@ def get_simulation_period(session, scenario):
 
 
 def init_tco_parameters(
-        scenario: Union[Scenario, int, Any],
-        database_url: Optional[str] = None,
-        scenario_tco_parameters: Optional[Dict[str, Any]] = None,
-        vehicle_types: Optional[List[Dict[str, Any]]] = None,
-        battery_types: Optional[List[Dict[str, Any]]] = None,
-        charging_point_types: Optional[List[Dict[str, Any]]] = None,
-        charging_infrastructure: Optional[List[Dict[str, Any]]] = None,
+    scenario: Union[Scenario, int, Any],
+    database_url: Optional[str] = None,
+    scenario_tco_parameters: Optional[Dict[str, Any]] = None,
+    vehicle_types: Optional[List[Dict[str, Any]]] = None,
+    battery_types: Optional[List[Dict[str, Any]]] = None,
+    charging_point_types: Optional[List[Dict[str, Any]]] = None,
+    charging_infrastructure: Optional[List[Dict[str, Any]]] = None,
 ):
     """
     Initialize the TCO parameters for the given scenario in the database.
@@ -350,13 +360,17 @@ def init_tco_parameters(
             for vt_info in vehicle_types:
                 vt = (
                     session.query(VehicleType)
-                    .filter(VehicleType.id == vt_info.get("id"), VehicleType.scenario_id == scenario.id)
+                    .filter(
+                        VehicleType.id == vt_info.get("id"),
+                        VehicleType.scenario_id == scenario.id,
+                    )
                     .all()
                 )
 
                 assert len(vt) == 1, (
                     f"There should be only one VehicleType with id {vt_info.get('id')} found in scenario "
-                    f"{scenario.id}. Now there are {len(vt)}.")
+                    f"{scenario.id}. Now there are {len(vt)}."
+                )
 
                 vt = vt[0]
                 vt_tco_parameters = {
@@ -381,24 +395,30 @@ def init_tco_parameters(
                     session.add(new_battery_type)
 
                     vehicle_type_id = bt_info.get("vehicle_type_id")
-                    vehicle_type = session.query(VehicleType).filter(
-                        VehicleType.id == vehicle_type_id
-                    ).one()
-                    assert vehicle_type.scenario_id == scenario.id, (
-                        f"VehicleType with id {vehicle_type_id} is not in scenario {scenario.id}. Please add this battery to the correct VehicleType."
+                    vehicle_type = (
+                        session.query(VehicleType)
+                        .filter(VehicleType.id == vehicle_type_id)
+                        .one()
                     )
+                    assert (
+                        vehicle_type.scenario_id == scenario.id
+                    ), f"VehicleType with id {vehicle_type_id} is not in scenario {scenario.id}. Please add this battery to the correct VehicleType."
                     vehicle_type.battery_type = new_battery_type
 
                 else:
                     battery_type_id = bt_info.get("id")
                     battery_type = (
                         session.query(BatteryType)
-                        .filter(BatteryType.id == battery_type_id, BatteryType.scenario_id == scenario.id, )
+                        .filter(
+                            BatteryType.id == battery_type_id,
+                            BatteryType.scenario_id == scenario.id,
+                        )
                         .all()
                     )
                     assert len(battery_type) == 1, (
                         f"There should be only one BatteryType with id {battery_type_id} found in scenario "
-                        f"{scenario.id}. Now there are {len(battery_type)}.")
+                        f"{scenario.id}. Now there are {len(battery_type)}."
+                    )
 
                     battery_type = battery_type[0]
                     battery_type.tco_parameters = bt_tco_parameters
@@ -453,13 +473,16 @@ def init_tco_parameters(
                     charging_point_type_id = cp_info.get("id")
                     charging_point_type = (
                         session.query(ChargingPointType)
-                        .filter(ChargingPointType.id == charging_point_type_id,
-                                ChargingPointType.scenario_id == scenario.id)
+                        .filter(
+                            ChargingPointType.id == charging_point_type_id,
+                            ChargingPointType.scenario_id == scenario.id,
+                        )
                         .all()
                     )
                     assert len(charging_point_type) == 1, (
                         f"There should be only one ChargingPointType with id {charging_point_type_id} found in scenario "
-                        f"{scenario.id}. Now there are {len(charging_point_type)}.")
+                        f"{scenario.id}. Now there are {len(charging_point_type)}."
+                    )
 
                     charging_point_type = charging_point_type[0]
                     charging_point_type.tco_parameters = cp_tco_parameters

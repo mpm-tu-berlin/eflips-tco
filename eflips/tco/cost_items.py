@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 
-
-
 def net_present_value(cash_flow, years_after_base_year: int, discount_rate):
     """
     This method is used to calculate the net present value of any cash flow, a default value for the discount rate is set.
@@ -15,6 +13,7 @@ def net_present_value(cash_flow, years_after_base_year: int, discount_rate):
     """
     npv = cash_flow / ((1 + discount_rate) ** years_after_base_year)
     return npv
+
 
 class CapexItemType(Enum):
     """ """
@@ -80,7 +79,9 @@ class CapexItem:
         number_of_full_replacements = project_duration // self.useful_life
         for i in range(number_of_full_replacements + 1):
             # The new price is the baseprice multiplied by the cost escalation factor to the power of the years after the base year.
-            new_price = base_price * (1 + self.cost_escalation) ** (i * self.useful_life)
+            new_price = base_price * (1 + self.cost_escalation) ** (
+                i * self.useful_life
+            )
             # If the project ends before the useful life if the next replacement, the binary variable is set true in order
             # to account for that in the total_proc_cef function.
             years_used = (i + 1) * self.useful_life
@@ -113,10 +114,16 @@ class CapexItem:
         # remaining project duration.
         # Calculating all annuities over the project duration and saving them in a list
         for new_price, years_after_base_year, partially_used in all_procurements:
-            annuity_this_procurement = new_price * interest_rate / (1 - (1 + interest_rate) ** (-self.useful_life))
+            annuity_this_procurement = (
+                new_price
+                * interest_rate
+                / (1 - (1 + interest_rate) ** (-self.useful_life))
+            )
             if partially_used:
                 # Calculate the present value of the last replacement, scaled for partial use
-                annuities_last_replacement = [annuity_this_procurement] * self.useful_life
+                annuities_last_replacement = [
+                    annuity_this_procurement
+                ] * self.useful_life
                 pv_sum = sum(
                     net_present_value(ann, year, net_discount_rate)
                     for year, ann in enumerate(annuities_last_replacement)
