@@ -14,9 +14,6 @@ SCENARIO_ID = 1
 from eflips.tco.tco_calculator import TCOCalculator
 
 
-
-
-
 if __name__ == "__main__":
 
     # initialize the database if there are no tco parameters
@@ -90,7 +87,7 @@ if __name__ == "__main__":
         {
             "type": "depot",
             "name": "Depot Charging Infrastructure",
-            "procurement_cost": 3400000.0, # TODO
+            "procurement_cost": 3400000.0,  # TODO
             "useful_life": 20,
             "cost_escalation": 0.02,
         },
@@ -116,15 +113,17 @@ if __name__ == "__main__":
         "maint_infr_cost": 1000,
         # Taxes and insurance cost in EUR per year and bus
         "taxes": 278,
-        "insurance": 9693, # DCO #9703, # EBU
+        "insurance": 9693,  # DCO #9703, # EBU
         # Cost escalation factors (cef / pef)
         "pef_general": 0.02,
         "pef_wages": 0.025,
         "pef_fuel": 0.038,
         "pef_insurance": 0.02,
         "const_energy_consumption": {
-            "12": 1.48, "13": 2.16, "14": 2.16,
-        }
+            "12": 1.48,
+            "13": 2.16,
+            "14": 2.16,
+        },
     }
 
     init_tco_parameters(
@@ -138,14 +137,12 @@ if __name__ == "__main__":
     )
 
     tco_calculator = TCOCalculator(
-        scenario=SCENARIO_ID, database_url=DATABASE_URL, energy_consumption_mode="constant",
+        scenario=SCENARIO_ID,
+        database_url=DATABASE_URL,
+        energy_consumption_mode="constant",
     )
 
     tco_calculator.calculate()
 
     print(tco_calculator.tco_unit_distance)
     tco_calculator.visualize()
-
-
-
-

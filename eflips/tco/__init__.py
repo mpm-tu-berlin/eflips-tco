@@ -7,8 +7,9 @@ from eflips.tco.util import create_session
 import logging
 
 
-def calculate_tco(scenario: Union[Scenario, int, Any],
-                  database_url: Optional[str] = None) -> Dict[str, float]:
+def calculate_tco(
+    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
+) -> Dict[str, float]:
     """
     This function calculates the Total Cost of Ownership (TCO) for a given scenario and returns a dictionary
     with the TCO values categorized by type. If there is an error during the calculation, it returns a dictionary
@@ -17,7 +18,8 @@ def calculate_tco(scenario: Union[Scenario, int, Any],
     :param scenario: Either a :class:`eflips.model.Scenario` object or an integer specifying the ID of a scenario in the
         database.
     :param database_url: Optional database URL to connect to if the scenario is provided as an integer.
-    :return: A dictionary with TCO values categorized by type.
+    :return: A dictionary with TCO values categorized by type: infrastructure, staff, battery, maintenance, vehicle,
+        energy and other (e.g.taxes and insurance). The unit is EUR per vehicle kilometer over the project duration.
 
     """
     logger = logging.getLogger(__name__)
@@ -30,7 +32,10 @@ def calculate_tco(scenario: Union[Scenario, int, Any],
         try:
             tco_calculator = TCOCalculator(scenario, energy_consumption_mode="constant")
         except Exception as e:
-            logger.warning("Error in initializing TCOCalculator: %s. Returning dummy data instead", e)
+            logger.warning(
+                "Error in initializing TCOCalculator: %s. Returning dummy data instead",
+                e,
+            )
 
             return {
                 "INFRASTRUCTURE": 1.0,
@@ -39,7 +44,7 @@ def calculate_tco(scenario: Union[Scenario, int, Any],
                 "MAINTENANCE": 1.0,
                 "VEHICLE": 1.0,
                 "OTHER": 1.0,
-                "ENERGY": 1.0
+                "ENERGY": 1.0,
             }
 
         tco_calculator.calculate()

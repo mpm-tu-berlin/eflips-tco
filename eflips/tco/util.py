@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from eflips.model import Scenario
 import matplotlib.pyplot as plt
 import numpy as np
+
+
 @contextmanager
 def create_session(
     scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
@@ -66,7 +68,9 @@ def create_session(
                 engine.dispose()
 
 
-def plot_tco_comparison(all_tco: list[dict], all_names: list[str], colors) -> plt.Figure:
+def plot_tco_comparison(
+    all_tco: list[dict], all_names: list[str], colors
+) -> plt.Figure:
     # Collect all possible keys
     all_keys = sorted({k for d in all_tco for k in d.keys()})
 
@@ -80,13 +84,22 @@ def plot_tco_comparison(all_tco: list[dict], all_names: list[str], colors) -> pl
     bottom = np.zeros(len(all_tco))
 
     for i, key in enumerate(all_keys):
-        current_bar = ax.bar(x, values[:, i], bottom=bottom, label=key, color=colors[key])
+        current_bar = ax.bar(
+            x, values[:, i], bottom=bottom, label=key, color=colors[key]
+        )
         bottom += values[:, i]
         ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
 
     totals = values.sum(axis=1)
     for xi, total in zip(x, totals):
-        ax.text(round(xi, 2), total + 0.3, str(round(total, 2)), ha="center", va="bottom", fontweight="bold")
+        ax.text(
+            round(xi, 2),
+            total + 0.3,
+            str(round(total, 2)),
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+        )
 
     ax.set_xticks(x)
     ax.set_xticklabels([all_names[i] for i in range(len(all_tco))])
