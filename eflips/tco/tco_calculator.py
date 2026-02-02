@@ -1,7 +1,6 @@
 from eflips.model import (
     Scenario,
-    Trip,
-    Rotation,
+    VehicleType,
 )
 
 from typing import Optional
@@ -57,13 +56,17 @@ class TCOCalculator:
             self.annual_fleet_mileage = annual_fleet_mileage
             self.energy_consumption_mode = energy_consumption_mode
             if self.energy_consumption_mode == "constant":
-                assert (
-                    "const_energy_consumption" in self.scenario.tco_parameters
-                ), "const_energy_consumption must be provided in the scenario tco_parameters when energy_consumption_mode is 'constant'"
+                vehicle_types = (
+                    session.query(VehicleType)
+                    .filter(VehicleType.scenario_id == self.scenario.id)
+                    .all()
+                )
 
-                const_energy_consumption = self.scenario.tco_parameters[
-                    "const_energy_consumption"
-                ]
+                const_energy_consumption = {}
+                for vt in vehicle_types:
+                    const_energy_consumption[str(vt.id)] = vt.tco_parameters.get(
+                        "const_energy_consumption"
+                    )
                 self.const_energy_consumption = const_energy_consumption
 
             if capex_items is None:
@@ -270,14 +273,14 @@ class TCOCalculator:
         # total_energy_consumption = calc_energy_consumption_simulated(session, self.scenario)
 
         # TODO maybe change it to energy_cost
-        fuel_cost = OpexItem(
+        energy_cost = OpexItem(
             name="Fuel Cost",
             type=OpexItemType.ENERGY,
-            unit_cost=scenario_tco_parameters["fuel_cost"],
+            unit_cost=scenario_tco_parameters["energy_cost"],
             usage_amount=total_energy_consumption,
-            cost_escalation=scenario_tco_parameters["pef_fuel"],
+            cost_escalation=scenario_tco_parameters["pef_energy"],
         )
-        list_opex_items.append(fuel_cost)
+        list_opex_items.append(energy_cost)
 
         # Get the total fleet mileage
 
