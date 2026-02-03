@@ -377,7 +377,7 @@ def init_tco_parameters(
         if battery_types is not None:
             for bt_tco_parameters in battery_types:
 
-                if "id" not in bt_tco_parameters:
+                if "id" not in bt_tco_parameters or bt_tco_parameters.get("id") is None:
                     new_battery_type = BatteryType(
                         scenario_id=scenario.id,
                         specific_mass=bt_tco_parameters.get("specific_mass", 1.0),
@@ -420,7 +420,7 @@ def init_tco_parameters(
         if charging_point_types is not None:
             for cp_tco_parameters in charging_point_types:
 
-                if "id" not in cp_tco_parameters:
+                if "id" not in cp_tco_parameters or cp_tco_parameters.get("id") is None:
                     new_cp_type = ChargingPointType(
                         name=cp_tco_parameters.get("name", "Unknown Charging Point"),
                         scenario_id=scenario.id,
