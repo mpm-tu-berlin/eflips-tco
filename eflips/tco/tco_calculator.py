@@ -187,13 +187,35 @@ class TCOCalculator:
 
         fig, ax = plt.subplots(figsize=(6, 8))
         bottom = 0
-        for item_type, cost in self.tco_by_type.items():
+
+        result = self.tco_by_type
+        # result["INFRASTRUCTURE"] += result.get("CHARGING_POINT", 0.0)
+        # result.pop("CHARGING_POINT", None)
+
+        category_color_mapping = {
+
+
+            "STAFF": "lightcoral",
+            "ENERGY": "lightcyan",
+            "MAINTENANCE": "lightyellow",
+            "OTHER": "lightpink",
+            "VEHICLE": "lightgray",
+            "BATTERY": "lightgreen",
+            "INFRASTRUCTURE": "skyblue",
+            "CHARGING_POINT": "gray",
+
+        }
+
+
+        for item_type, color in category_color_mapping.items():
+            cost = result.get(item_type)
             current_bar = ax.bar(
                 "Total TCO",
                 cost,
                 bottom=bottom,
                 label=item_type,
                 width=0.2,
+                color=color,
             )
             bottom += cost
             ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
@@ -237,23 +259,21 @@ class TCOCalculator:
 
         list_opex_items = []
 
-        scenario_tco_parameters = self.scenario.tco_parameters
+        scenario_params = self.scenario.tco_parameters
+        escalation = scenario_params["cost_escalation_rate"]
 
-        # Get the annual driver hours
-
-        # TODO should we avoid using OpexItem here?
-
+        # Staff cost
         total_driver_hours = calculate_total_driver_hours(session, self.scenario)
         staff_cost = OpexItem(
             name="Staff Cost",
             type=OpexItemType.STAFF,
-            unit_cost=scenario_tco_parameters["staff_cost"],
+            unit_cost=scenario_params["staff_cost"],
             usage_amount=total_driver_hours,
-            cost_escalation=scenario_tco_parameters["pef_wages"],
+            cost_escalation=escalation["staff"],
         )
         list_opex_items.append(staff_cost)
 
-        # Get the total energy consumption
+        # Energy cost
         match self.energy_consumption_mode:
             case "constant":
                 total_energy_consumption = 0.0
@@ -261,7 +281,6 @@ class TCOCalculator:
                 for vid, consumption in self.const_energy_consumption.items():
                     if vid in mileage_per_vt:
                         total_energy_consumption += consumption * mileage_per_vt[vid]
-
             case "simulated":
                 total_energy_consumption = calc_energy_consumption_simulated(
                     session, self.scenario
@@ -270,29 +289,27 @@ class TCOCalculator:
                 raise ValueError(
                     f"Unknown energy consumption mode: {self.energy_consumption_mode}"
                 )
-        # total_energy_consumption = calc_energy_consumption_simulated(session, self.scenario)
 
-        # TODO maybe change it to energy_cost
         energy_cost = OpexItem(
-            name="Fuel Cost",
+            name="Energy Cost",
             type=OpexItemType.ENERGY,
-            unit_cost=scenario_tco_parameters["energy_cost"],
+            unit_cost=scenario_params["fuel_cost"]["electricity"],
             usage_amount=total_energy_consumption,
-            cost_escalation=scenario_tco_parameters["pef_energy"],
+            cost_escalation=escalation["electricity"],
         )
         list_opex_items.append(energy_cost)
 
-        # Get the total fleet mileage
-
+        # Vehicle maintenance cost
         maint_cost_vehicles = OpexItem(
             name="Maintenance Cost Vehicles",
             type=OpexItemType.MAINTENANCE,
-            unit_cost=scenario_tco_parameters["maint_cost"],
+            unit_cost=scenario_params["vehicle_maint_cost"]["electricity"],
             usage_amount=self.annual_fleet_mileage,
-            cost_escalation=scenario_tco_parameters["pef_general"],
+            cost_escalation=escalation["general"],
         )
         list_opex_items.append(maint_cost_vehicles)
 
+        # Insurance
         total_number_vehicles = sum(
             asset.quantity
             for asset in self.capex_items
@@ -301,21 +318,23 @@ class TCOCalculator:
         insurance = OpexItem(
             name="Insurance",
             type=OpexItemType.OTHER,
-            unit_cost=scenario_tco_parameters["insurance"],
+            unit_cost=scenario_params["insurance"],
             usage_amount=total_number_vehicles,
-            cost_escalation=scenario_tco_parameters["pef_insurance"],
+            cost_escalation=escalation["insurance"],
         )
         list_opex_items.append(insurance)
 
+        # Taxes
         taxes = OpexItem(
             name="Taxes",
             type=OpexItemType.OTHER,
-            unit_cost=scenario_tco_parameters["taxes"],
+            unit_cost=scenario_params["taxes"],
             usage_amount=total_number_vehicles,
-            cost_escalation=scenario_tco_parameters["pef_general"],
+            cost_escalation=escalation["general"],
         )
         list_opex_items.append(taxes)
 
+        # Infrastructure maintenance cost
         total_number_charging_points = sum(
             asset.quantity
             for asset in self.capex_items
@@ -324,9 +343,9 @@ class TCOCalculator:
         maint_cost_infra = OpexItem(
             name="Maintenance Cost Infrastructure",
             type=OpexItemType.MAINTENANCE,
-            unit_cost=scenario_tco_parameters["maint_infr_cost"],
+            unit_cost=scenario_params["infra_maint_cost"],
             usage_amount=total_number_charging_points,
-            cost_escalation=scenario_tco_parameters["pef_general"],
+            cost_escalation=escalation["general"],
         )
         list_opex_items.append(maint_cost_infra)
         self.opex_items = list_opex_items

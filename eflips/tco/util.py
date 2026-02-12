@@ -2,9 +2,9 @@ import logging
 import os
 from contextlib import contextmanager
 from typing import Any, Optional, Tuple, Union
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session
-from eflips.model import Scenario
+from eflips.model import Scenario, create_engine
 import matplotlib.pyplot as plt
 import numpy as np
 
