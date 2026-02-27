@@ -16,7 +16,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=340000.0,
         cost_escalation=-0.02,
-        const_energy_consumption=1.48,
+        average_electricity_consumption=1.48,
     ),
     VehicleTypeTCOParameter(
         name_short="DD",
@@ -24,7 +24,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=603000.0,
         cost_escalation=-0.02,
-        const_energy_consumption=2.16,
+        average_electricity_consumption=2.16,
     ),
     VehicleTypeTCOParameter(
         name_short="GN",
@@ -32,7 +32,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=650000.0,
         cost_escalation=-0.02,
-        const_energy_consumption=2.16,
+        average_electricity_consumption=2.16,
     ),
 ]
 

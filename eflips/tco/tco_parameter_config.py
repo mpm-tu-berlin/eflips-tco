@@ -13,7 +13,11 @@ class VehicleTypeTCOParameter:
     useful_life: int
     procurement_cost: float
     cost_escalation: float
-    const_energy_consumption: Optional[float] = None
+    average_electricity_consumption: Optional[float] = None
+    average_diesel_consumption: Optional[float] = None
+    procurement_cost_diesel_equivalent: Optional[float] = None
+    cost_escalation_diesel_equivalent: Optional[float] = None
+    
 
     def to_dict(self, vehicle_id: int) -> Dict[str, Any]:
         d = {
@@ -23,8 +27,14 @@ class VehicleTypeTCOParameter:
             "procurement_cost": self.procurement_cost,
             "cost_escalation": self.cost_escalation,
         }
-        if self.const_energy_consumption is not None:
-            d["const_energy_consumption"] = self.const_energy_consumption
+        if self.average_electricity_consumption is not None:
+            d["average_electricity_consumption"] = self.average_electricity_consumption
+        if self.average_diesel_consumption is not None:
+            d["average_diesel_consumption"] = self.average_diesel_consumption
+        if self.procurement_cost_diesel_equivalent is not None:
+            d["procurement_cost_diesel_equivalent"] = self.procurement_cost_diesel_equivalent
+        if self.cost_escalation_diesel_equivalent is not None:
+            d["cost_escalation_diesel_equivalent"] = self.cost_escalation_diesel_equivalent
         return d
 
 
@@ -42,6 +52,8 @@ class BatteryTypeTCOParameter:
     # is found for the associated VehicleType). These provide the required model fields.
     specific_mass: float = 1.0
     chemistry: str = "unknown"
+
+    # TODO considering asdict() or dacite package
 
     def to_dict(self, battery_id: Optional[int] = None) -> Dict[str, Any]:
         d = {
