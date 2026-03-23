@@ -28,11 +28,7 @@ class CapexItemType(Enum):
 
     INFRASTRUCTURE = auto()
 
-    "For infrastructure installation, the procurement cost is the cost per station or depot-station."
-
-    CHARGING_POINT = auto()
-
-    "For charging point assets, the procurement cost is the cost per charging point. "
+    "For infrastructure assets (station/depot installation and charging points), the procurement cost is per unit."
 
 
 @dataclass

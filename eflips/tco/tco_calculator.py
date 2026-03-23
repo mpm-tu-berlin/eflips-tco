@@ -244,12 +244,13 @@ class TCOCalculator:
 
         # Get the number of charging infrastructure and slots by type. There are only depot or
         # terminal stop (opportunity) charging stations.
-        assets_infrastructure = load_capex_items_infrastructure(session, self.scenario)
+        assets_infrastructure, total_slots = load_capex_items_infrastructure(session, self.scenario)
 
         capex_items = (
             list(assets_vehicle) + list(assets_battery) + list(assets_infrastructure)
         )
         self.capex_items = capex_items
+        self.total_slots = total_slots
 
     def _load_opex_items_from_db(self, session):
         """
@@ -335,16 +336,11 @@ class TCOCalculator:
         list_opex_items.append(taxes)
 
         # Infrastructure maintenance cost
-        total_number_charging_points = sum(
-            asset.quantity
-            for asset in self.capex_items
-            if asset.type == CapexItemType.CHARGING_POINT
-        )
-        maint_cost_infra = OpexItem(
+        list_opex_items.append(OpexItem(
             name="Maintenance Cost Infrastructure",
             type=OpexItemType.MAINTENANCE,
             unit_cost=scenario_params["infra_maint_cost"],
-            usage_amount=total_number_charging_points,
+            usage_amount=self.total_slots,
             cost_escalation=escalation["general"],
         )
         list_opex_items.append(maint_cost_infra)

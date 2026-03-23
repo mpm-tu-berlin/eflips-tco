@@ -133,9 +133,10 @@ def load_capex_items_infrastructure(session, scenario):
                         f"{charging_point_type.name}. They are not considered in the calculation."
                     )
         if total_count != 0:
+            total_slots += total_count
             asset_charging_point_type = CapexItem(
-                name=charging_point_type.tco_parameters["name"],
-                type=CapexItemType.CHARGING_POINT,
+                name=charging_point_type.name,
+                type=CapexItemType.INFRASTRUCTURE,
                 useful_life=charging_point_type.tco_parameters["useful_life"],
                 procurement_cost=charging_point_type.tco_parameters["procurement_cost"],
                 cost_escalation=charging_point_type.tco_parameters["cost_escalation"],
@@ -205,8 +206,7 @@ def load_capex_items_infrastructure(session, scenario):
         )
         list_asset_charging_infra.append(asset_station)
 
-    # return the dictionary
-    return list_asset_charging_infra
+    return list_asset_charging_infra, total_slots
 
 
 # Get the total fuel / Energy consumption from the database.
