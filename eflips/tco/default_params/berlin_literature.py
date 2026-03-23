@@ -18,7 +18,7 @@ VEHICLE_TYPES = [
         name="Ebusco 3.0 12 large battery",
         useful_life=14,
         procurement_cost=580000.0,
-        cost_escalation=0.02,
+        cost_escalation=-0.02,
         average_electricity_consumption=1.48,
     ),
     VehicleTypeTCOParameter(
@@ -26,7 +26,7 @@ VEHICLE_TYPES = [
         name="Solaris Urbino 18 large battery",
         useful_life=14,
         procurement_cost=780000.0,
-        cost_escalation=0.02,
+        cost_escalation=-0.02,
         average_electricity_consumption=2.16,
     ),
     VehicleTypeTCOParameter(
@@ -34,33 +34,61 @@ VEHICLE_TYPES = [
         name="Alexander Dennis Enviro500EV large battery",
         useful_life=14,
         procurement_cost=780000.0,
-        cost_escalation=0.02,
+        cost_escalation=-0.02,
         average_electricity_consumption=2.16,
+    ),
+
+    VehicleTypeTCOParameter(
+        name_short="Diesel EN",
+        name="Diesel Ebusco 3.0 12 large battery",
+        useful_life=14,
+        procurement_cost=275000.0,
+        cost_escalation=0.02,
+        average_diesel_consumption=1.48,
+    ),
+    VehicleTypeTCOParameter(
+        name_short="Diesel DD",
+        name="Diesel Solaris Urbino 18 large battery",
+        useful_life=14,
+        procurement_cost=330000.0,
+        cost_escalation=0.02,
+        average_diesel_consumption=2.16,
+    ),
+    VehicleTypeTCOParameter(
+        name_short="Diesel GN",
+        name="Diesel Alexander Dennis Enviro500EV large battery",
+        useful_life=14,
+        procurement_cost=510000.0,
+        cost_escalation=0.02,
+        average_diesel_consumption=2.16,
     ),
 ]
 
 # Battery type defaults
 BATTERY_TYPES = [
     BatteryTypeTCOParameter(
-        name="Ebusco 3.0 12 large battery",
         vehicle_name_short="EN",
         procurement_cost=190,
         useful_life=7,
         cost_escalation=-0.03,
+        specific_mass=0.1,
+        chemistry="test",
     ),
     BatteryTypeTCOParameter(
-        name="Solaris Urbino 18 large battery",
         vehicle_name_short="DD",
         procurement_cost=190,
         useful_life=7,
         cost_escalation=-0.03,
+        specific_mass=0.1,
+        chemistry="test",
     ),
     BatteryTypeTCOParameter(
-        name="Alexander Dennis Enviro500EV large battery",
         vehicle_name_short="GN",
         procurement_cost=190,
         useful_life=7,
         cost_escalation=-0.03,
+        specific_mass=0.1,
+        chemistry="test",
     ),
 ]
 
@@ -68,15 +96,15 @@ BATTERY_TYPES = [
 # Prices from Jefferies and Goehlich (2020), with inflation adjustment
 CHARGING_POINT_TYPES = [
     ChargingPointTypeTCOParameter(
+        name="depot",
         type="depot",
-        name="Depot Charging Point",
         procurement_cost=119899.50,
         useful_life=20,
         cost_escalation=0.02,
     ),
     ChargingPointTypeTCOParameter(
+        name="station",
         type="opportunity",
-        name="Opportunity Charging Point",
         procurement_cost=299748.74,
         useful_life=20,
         cost_escalation=0.02,
@@ -87,14 +115,12 @@ CHARGING_POINT_TYPES = [
 CHARGING_INFRASTRUCTURE = [
     ChargingInfrastructureTCOParameter(
         type="depot",
-        name="Depot Charging Infrastructure",
         procurement_cost=2397989.95,  # TODO
         useful_life=20,
         cost_escalation=0.02,
     ),
     ChargingInfrastructureTCOParameter(
         type="station",
-        name="Opportunity Charging Infrastructure",
         procurement_cost=269773.87,
         useful_life=20,
         cost_escalation=0.02,
