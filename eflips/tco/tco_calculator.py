@@ -1,9 +1,14 @@
+import logging
+
 from eflips.model import (
     Scenario,
     VehicleType,
+    EnergySource,
 )
 
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from eflips.tco.data_queries import (
     load_capex_items_vehicle,
@@ -23,6 +28,7 @@ from eflips.tco.cost_items import (
     net_present_value,
 )
 from eflips.tco.util import create_session
+from eflips.tco.tco_parameter_config import TCOResult
 
 import pandas as pd
 
@@ -55,19 +61,43 @@ class TCOCalculator:
             annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
             self.annual_fleet_mileage = annual_fleet_mileage
             self.energy_consumption_mode = energy_consumption_mode
-            if self.energy_consumption_mode == "constant":
-                vehicle_types = (
-                    session.query(VehicleType)
-                    .filter(VehicleType.scenario_id == self.scenario.id)
-                    .all()
-                )
 
-                const_energy_consumption = {}
-                for vt in vehicle_types:
-                    const_energy_consumption[str(vt.id)] = vt.tco_parameters.get(
-                        "const_energy_consumption"
+            # Build const_consumption for all vehicle types
+            vehicle_types = (
+                session.query(VehicleType)
+                .filter(VehicleType.scenario_id == self.scenario.id)
+                .all()
+            )
+            for vt in vehicle_types:
+                if vt.energy_source is None:
+                    vt.energy_source = EnergySource.BATTERY_ELECTRIC
+                    session.add(vt)
+            session.flush()
+
+            const_consumption: dict[VehicleType, float] = {}
+            for vt in vehicle_types:
+                params = vt.tco_parameters or {}
+                if vt.energy_source == EnergySource.DIESEL:
+                    consumption = params.get("average_diesel_consumption")
+                else:
+                    consumption = params.get("average_electricity_consumption")
+                if consumption is None:
+                    logger.warning(
+                        f"VehicleType '{vt.name}' (id={vt.id}) has no consumption in "
+                        "tco_parameters. It will be treated as 0."
                     )
-                self.const_energy_consumption = const_energy_consumption
+                    consumption = 0.0
+                const_consumption[vt] = consumption
+            self.const_consumption = const_consumption
+
+            # Mileage per vehicle type and derived mileage by energy source
+            self.mileage_per_vt = get_mileage_per_vehicle_type(session, self.scenario)
+            mileage_by_energy_source: dict[str, float] = {}
+            for vt, mileage in self.mileage_per_vt.items():
+                # TODO what if we dont have an energy source? Should we just ignore it or put it in an "unknown" category?
+                key = vt.energy_source.name
+                mileage_by_energy_source[key] = mileage_by_energy_source.get(key, 0.0) + mileage
+            self.mileage_by_energy_source = mileage_by_energy_source
 
             if capex_items is None:
                 self._load_capex_items_from_db(session)
@@ -88,28 +118,23 @@ class TCOCalculator:
             self.interest_rate = self.scenario.tco_parameters["interest_rate"]
             self.inflation_rate = self.scenario.tco_parameters["inflation_rate"]
 
-            # Initialize the output values
-            self.total_capex = 0
-            self.total_opex = 0
-            self.tco_over_project_duration = 0
-            self.tco_unit_distance = 0
-            self.tco_by_item = pd.DataFrame(columns=["Item", "Specific Cost", "Type"])
+            self.result: Optional[TCOResult] = None
+            self.tco_by_item: Optional[pd.DataFrame] = None
 
-    def calculate(self):
+    def calculate(self) -> TCOResult:
         """
-        Calculate the total cost of ownership based on the input data provided in the dictionaries.
-        :return: A dictionary containing the TCO results. The results are categorized by type in the unit of EUR per
-        vehicle kilometer over the project duration.
-        """
+        Calculate the total cost of ownership.
 
+        :return: A :class:`TCOResult` with aggregated totals and per-type specific costs
+            (EUR/km). The detailed itemised breakdown is also stored in ``self.tco_by_item``.
+        """
         list_of_items = []
         list_of_costs = []
-        # ----------Total CAPEX----------#
+        total_capex = 0.0
+        total_opex = 0.0
 
-        # Calculate the total cost for each asset over the project duration.
         for capex_item in self.capex_items:
-            # Calculate the procurement cost for the respective asset including replacement.
-            procurement_this_type = (
+            cost = (
                 capex_item.calculate_total_procurement_cost(
                     project_duration=self.project_duration,
                     interest_rate=self.interest_rate,
@@ -117,66 +142,41 @@ class TCOCalculator:
                 )
                 * capex_item.quantity
             )
-            # Add the cost of this asset to the CAPEX section of the TCO.
-
-            # self.tco_by_item[capex_item] = procurement_this_type
             list_of_items.append(capex_item)
-            list_of_costs.append(procurement_this_type)
-            self.total_capex += procurement_this_type
+            list_of_costs.append(cost)
+            total_capex += cost
 
-        # ----------Total OPEX----------#
-
-        # Calculate the OPEX for each category over the whole project duration.
         for opex_item in self.opex_items:
-
-            total_opex_of_type = 0
-
-            # Calculate the OPEX for each year.
-            for year in range(self.project_duration):
-                opex_cost_in_respective_year = opex_item.future_cost(year)
-                total_opex_of_type += net_present_value(
-                    opex_cost_in_respective_year, year, self.inflation_rate
-                )
-
-            # self.tco_by_item[opex_item] = total_opex_of_type
+            cost = sum(
+                net_present_value(opex_item.future_cost(year), year, self.inflation_rate)
+                for year in range(self.project_duration)
+            )
             list_of_items.append(opex_item)
-            list_of_costs.append(total_opex_of_type)
-            self.total_opex += total_opex_of_type
+            list_of_costs.append(cost)
+            total_opex += cost
 
-        # ----------Calculation of three kinds of TCO----------#
+        tco = total_capex + total_opex
+        total_km = self.annual_fleet_mileage * self.project_duration
 
-        # TCO over project duration
-        self.tco_over_project_duration = self.total_opex + self.total_capex
-
-        # Annual TCO
-        # TODO do we need this? maybe later
-
-        # Specific TCO over project duration
-        self.tco_unit_distance = self.tco_over_project_duration / (
-            self.annual_fleet_mileage * self.project_duration
-        )
-
-        # Create a DataFrame from the list of items and costs
         self.tco_by_item = pd.DataFrame({"Item": list_of_items, "Cost": list_of_costs})
-
-        self.tco_by_item["Specific Cost"] = self.tco_by_item["Cost"] / (
-            self.annual_fleet_mileage * self.project_duration
-        )
+        self.tco_by_item["Specific Cost"] = self.tco_by_item["Cost"] / total_km
         self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
 
-        tco_by_type = {}
+        tco_by_type = {
+            t: float(self.tco_by_item[self.tco_by_item["type"] == t]["Specific Cost"].sum())
+            for t in set(self.tco_by_item["type"].values)
+        }
 
-        types = set(self.tco_by_item["type"].values)
-        for t in types:
-            tco_by_type[t] = float(
-                self.tco_by_item[self.tco_by_item["type"] == t]["Specific Cost"].sum()
-            )
-
-        self.tco_by_type = tco_by_type
-
-        tco_by_type_without_staff = tco_by_type.copy()
-        tco_by_type_without_staff.pop("STAFF", None)
-        self.tco_by_type_without_staff = tco_by_type_without_staff
+        self.result = TCOResult(
+            project_duration=self.project_duration,
+            annual_fleet_mileage=self.annual_fleet_mileage,
+            total_capex=total_capex,
+            total_opex=total_opex,
+            tco_over_project_duration=tco,
+            tco_per_km=tco / total_km,
+            tco_by_type=tco_by_type,
+        )
+        return self.result
 
     def visualize(self):
         """
@@ -188,13 +188,7 @@ class TCOCalculator:
         fig, ax = plt.subplots(figsize=(6, 8))
         bottom = 0
 
-        result = self.tco_by_type
-        # result["INFRASTRUCTURE"] += result.get("CHARGING_POINT", 0.0)
-        # result.pop("CHARGING_POINT", None)
-
         category_color_mapping = {
-
-
             "STAFF": "lightcoral",
             "ENERGY": "lightcyan",
             "MAINTENANCE": "lightyellow",
@@ -202,25 +196,50 @@ class TCOCalculator:
             "VEHICLE": "lightgray",
             "BATTERY": "lightgreen",
             "INFRASTRUCTURE": "skyblue",
-            "CHARGING_POINT": "gray",
-
         }
 
+        def _fuel_tag(item_name: str) -> str:
+            if "(Diesel)" in item_name:
+                return "diesel"
+            if "(Electric)" in item_name:
+                return "electric"
+            return "other"
 
-        for item_type, color in category_color_mapping.items():
-            cost = result.get(item_type)
-            current_bar = ax.bar(
-                "Total TCO",
-                cost,
-                bottom=bottom,
-                label=item_type,
-                width=0.2,
-                color=color,
-            )
-            bottom += cost
-            ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
+        df = self.tco_by_item.copy()
+        df["fuel"] = df["Item"].apply(lambda x: _fuel_tag(x.name))
 
-        total = self.tco_unit_distance
+        seen_labels = set()
+        for category, color in category_color_mapping.items():
+            cat_df = df[df["type"] == category]
+            if cat_df.empty:
+                continue
+            # electric/other first (solid), diesel second (hatched)
+            for fuel, hatch in [("electric", ""), ("other", ""), ("diesel", "///")]:
+                subset = cat_df[cat_df["fuel"] == fuel]
+                if subset.empty:
+                    continue
+                cost = subset["Specific Cost"].sum()
+                if fuel == "diesel":
+                    label = f"{category} (Diesel)"
+                elif fuel == "electric":
+                    label = f"{category} (Electric)"
+                else:
+                    label = category
+                current_bar = ax.bar(
+                    "Total TCO",
+                    cost,
+                    bottom=bottom,
+                    label=label if label not in seen_labels else "_nolegend_",
+                    width=0.2,
+                    color=color,
+                    hatch=hatch,
+                    edgecolor="gray",
+                )
+                seen_labels.add(label)
+                bottom += cost
+                ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
+
+        total = self.result.tco_per_km
         ax.text(
             0,
             total + 0.05,
@@ -263,52 +282,88 @@ class TCOCalculator:
         scenario_params = self.scenario.tco_parameters
         escalation = scenario_params["cost_escalation_rate"]
 
+        electric_mileage = self.mileage_by_energy_source.get("BATTERY_ELECTRIC", 0.0)
+        diesel_mileage = self.mileage_by_energy_source.get("DIESEL", 0.0)
+
         # Staff cost
         total_driver_hours = calculate_total_driver_hours(session, self.scenario)
-        staff_cost = OpexItem(
+        list_opex_items.append(OpexItem(
             name="Staff Cost",
             type=OpexItemType.STAFF,
             unit_cost=scenario_params["staff_cost"],
             usage_amount=total_driver_hours,
             cost_escalation=escalation["staff"],
-        )
-        list_opex_items.append(staff_cost)
+        ))
 
         # Energy cost
         match self.energy_consumption_mode:
             case "constant":
-                total_energy_consumption = 0.0
-                mileage_per_vt = get_mileage_per_vehicle_type(session, self.scenario)
-                for vid, consumption in self.const_energy_consumption.items():
-                    if vid in mileage_per_vt:
-                        total_energy_consumption += consumption * mileage_per_vt[vid]
-            case "simulated":
-                total_energy_consumption = calc_energy_consumption_simulated(
-                    session, self.scenario
+                electric_consumption = sum(
+                    self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                    for vt in self.const_consumption
+                    if vt.energy_source == EnergySource.BATTERY_ELECTRIC
                 )
+                diesel_consumption = sum(
+                    self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                    for vt in self.const_consumption
+                    if vt.energy_source == EnergySource.DIESEL
+                )
+            case "simulated":
+                electric_consumption = calc_energy_consumption_simulated(session, self.scenario)
+                if diesel_mileage > 0:
+                    logger.warning(
+                        "Diesel mileage detected in 'simulated' mode. "
+                        "Diesel energy consumption will be estimated from "
+                        "average_diesel_consumption in VehicleType.tco_parameters."
+                    )
+                    diesel_consumption = sum(
+                        self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                        for vt in self.const_consumption
+                        if vt.energy_source == EnergySource.DIESEL
+                    )
+                else:
+                    diesel_consumption = 0.0
             case _:
                 raise ValueError(
                     f"Unknown energy consumption mode: {self.energy_consumption_mode}"
                 )
 
-        energy_cost = OpexItem(
-            name="Energy Cost",
-            type=OpexItemType.ENERGY,
-            unit_cost=scenario_params["fuel_cost"]["electricity"],
-            usage_amount=total_energy_consumption,
-            cost_escalation=escalation["electricity"],
-        )
-        list_opex_items.append(energy_cost)
+        if electric_mileage > 0:
+            list_opex_items.append(OpexItem(
+                name="Energy Cost (Electric)",
+                type=OpexItemType.ENERGY,
+                unit_cost=scenario_params["fuel_cost"]["electricity"],
+                usage_amount=electric_consumption,
+                cost_escalation=escalation["electricity"],
+            ))
+
+        if diesel_mileage > 0:
+            list_opex_items.append(OpexItem(
+                name="Energy Cost (Diesel)",
+                type=OpexItemType.ENERGY,
+                unit_cost=scenario_params["fuel_cost"]["diesel"],
+                usage_amount=diesel_consumption,
+                cost_escalation=escalation["diesel"],
+            ))
 
         # Vehicle maintenance cost
-        maint_cost_vehicles = OpexItem(
-            name="Maintenance Cost Vehicles",
-            type=OpexItemType.MAINTENANCE,
-            unit_cost=scenario_params["vehicle_maint_cost"]["electricity"],
-            usage_amount=self.annual_fleet_mileage,
-            cost_escalation=escalation["general"],
-        )
-        list_opex_items.append(maint_cost_vehicles)
+        if electric_mileage > 0:
+            list_opex_items.append(OpexItem(
+                name="Maintenance Cost Vehicles (Electric)",
+                type=OpexItemType.MAINTENANCE,
+                unit_cost=scenario_params["vehicle_maint_cost"]["electricity"],
+                usage_amount=electric_mileage,
+                cost_escalation=escalation["general"],
+            ))
+
+        if diesel_mileage > 0:
+            list_opex_items.append(OpexItem(
+                name="Maintenance Cost Vehicles (Diesel)",
+                type=OpexItemType.MAINTENANCE,
+                unit_cost=scenario_params["vehicle_maint_cost"]["diesel"],
+                usage_amount=diesel_mileage,
+                cost_escalation=escalation["general"],
+            ))
 
         # Insurance
         total_number_vehicles = sum(
@@ -316,24 +371,22 @@ class TCOCalculator:
             for asset in self.capex_items
             if asset.type == CapexItemType.VEHICLE
         )
-        insurance = OpexItem(
+        list_opex_items.append(OpexItem(
             name="Insurance",
             type=OpexItemType.OTHER,
             unit_cost=scenario_params["insurance"],
             usage_amount=total_number_vehicles,
             cost_escalation=escalation["insurance"],
-        )
-        list_opex_items.append(insurance)
+        ))
 
         # Taxes
-        taxes = OpexItem(
+        list_opex_items.append(OpexItem(
             name="Taxes",
             type=OpexItemType.OTHER,
             unit_cost=scenario_params["taxes"],
             usage_amount=total_number_vehicles,
             cost_escalation=escalation["general"],
-        )
-        list_opex_items.append(taxes)
+        ))
 
         # Infrastructure maintenance cost
         list_opex_items.append(OpexItem(
@@ -342,6 +395,6 @@ class TCOCalculator:
             unit_cost=scenario_params["infra_maint_cost"],
             usage_amount=self.total_slots,
             cost_escalation=escalation["general"],
-        )
-        list_opex_items.append(maint_cost_infra)
+        ))
+
         self.opex_items = list_opex_items

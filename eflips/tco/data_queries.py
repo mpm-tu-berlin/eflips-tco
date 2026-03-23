@@ -1,4 +1,5 @@
 import datetime
+import logging
 import warnings
 from typing import List, Tuple, Any, Dict, Optional, Union
 from eflips.model import (
@@ -17,7 +18,10 @@ from eflips.model import (
     EventType,
     Depot,
     Rotation,
+    EnergySource,
 )
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy import or_, and_, distinct
 from sqlalchemy import func
@@ -43,8 +47,9 @@ def load_capex_items_vehicle(session, scenario):
     list_vt_asset = []
     for vehicle_type, vehicle_count, tco_parameters in list_vt_count_parameter:
         # Get the total annual mileage for the respective vehicle type
+        fuel_suffix = "(Diesel)" if vehicle_type.energy_source == EnergySource.DIESEL else "(Electric)"
         asset_this_vtype = CapexItem(
-            name=vehicle_type.name,
+            name=f"{vehicle_type.name} {fuel_suffix}",
             type=CapexItemType.VEHICLE,
             useful_life=tco_parameters["useful_life"],
             procurement_cost=tco_parameters["procurement_cost"],
@@ -72,7 +77,10 @@ def load_capex_items_battery(session, scenario):
         )
         .join(BatteryType, BatteryType.id == VehicleType.battery_type_id)
         .join(Vehicle, Vehicle.vehicle_type_id == VehicleType.id)
-        .filter(VehicleType.scenario_id == scenario.id)
+        .filter(
+            VehicleType.scenario_id == scenario.id,
+            VehicleType.energy_source == EnergySource.BATTERY_ELECTRIC,
+        )
         .group_by(VehicleType.id, VehicleType.battery_capacity, BatteryType.id)
         .all()
     )
@@ -104,21 +112,30 @@ def load_capex_items_infrastructure(session, scenario):
 
     charging_point_types = scenario.charging_point_types
     list_asset_charging_infra = []
+    total_slots = 0
 
     for charging_point_type in charging_point_types:
         total_count = 0
         if charging_point_type.areas is not None:
             for area in charging_point_type.areas:
-                try:
-                    num_dc_slots = power_and_occupancy(
-                        area_id=area.id, session=session
-                    )["occupancy_charging"].max()
-                    total_count += num_dc_slots
-                except ValueError:
-                    w.warn(
-                        f"No charging slots have been found for the depot charging stations of type "
-                        f"{charging_point_type.name}. They are not considered in the calculation."
-                    )
+                has_charging_power = any(
+                    p.electric_power is not None for p in area.processes
+                )
+                if (
+                    has_charging_power
+                    and area.vehicle_type is not None
+                    and area.vehicle_type.energy_source == EnergySource.BATTERY_ELECTRIC
+                ):
+                    try:
+                        num_dc_slots = power_and_occupancy(
+                            area_id=area.id, session=session
+                        )["occupancy_total"].max()
+                        total_count += num_dc_slots
+                    except ValueError:
+                        w.warn(
+                            f"No charging slots have been found for the depot charging stations of type "
+                            f"{charging_point_type.name}. They are not considered in the calculation."
+                        )
 
         if charging_point_type.stations is not None:
             for station in charging_point_type.stations:
@@ -237,6 +254,7 @@ def calc_energy_consumption_simulated(session, scenario):
                 Event.event_type == "CHARGING_OPPORTUNITY",
             ),
             Event.scenario_id == scenario.id,
+            VehicleType.energy_source == EnergySource.BATTERY_ELECTRIC,
         )
         .one()
     )
@@ -277,27 +295,24 @@ def get_annual_fleet_mileage(session, scenario) -> float:
     return total_simulated_mileage * period_per_year / 1000  # Convert to km
 
 
-def get_mileage_per_vehicle_type(session, scenario) -> Dict[int, Tuple[float, float]]:
-    """ """
+def get_mileage_per_vehicle_type(session, scenario) -> Dict[VehicleType, float]:
+    """Returns annual mileage in km keyed by VehicleType object."""
 
     vt_mileage = (
-        session.query(Rotation.vehicle_type_id, func.sum(Route.distance))
-        .join(Trip, Trip.route_id == Route.id)
-        .join(Rotation, Trip.rotation_id == Rotation.id)
+        session.query(VehicleType, func.sum(Route.distance))
+        .join(Rotation, Rotation.vehicle_type_id == VehicleType.id)
+        .join(Trip, Trip.rotation_id == Rotation.id)
+        .join(Route, Trip.route_id == Route.id)
         .filter(Rotation.scenario_id == scenario.id)
-        .group_by(Rotation.vehicle_type_id)
+        .group_by(VehicleType.id)
         .all()
     )
 
-    mileage_per_vt = {}
-    for vt, mileage in vt_mileage:
-        mileage_per_vt[str(vt)] = (
-            mileage
-            / 1000
-            * get_simulation_period(session=session, scenario=scenario)[1]
-        )
-
-    return mileage_per_vt
+    period_per_year = get_simulation_period(session=session, scenario=scenario)[1]
+    return {
+        vt: distance / 1000 * period_per_year
+        for vt, distance in vt_mileage
+    }
 
 
 # Calculate the annual driver hours.
@@ -378,15 +393,20 @@ def init_tco_parameters(
         existing VehicleTypes in the database by ``name_short``.
     :param battery_type_params: A list of :class:`BatteryTypeTCOParameter` instances. Matched via
         ``vehicle_name_short`` to find the associated VehicleType. If the VehicleType has no
-        BatteryType, a new one is created using ``specific_mass`` and ``chemistry`` from the
-        dataclass.
+        BatteryType, a new one is created; ``specific_mass`` and ``chemistry`` must then be set
+        on the dataclass or a :exc:`ValueError` is raised.
     :param charging_point_type_params: A list of :class:`ChargingPointTypeTCOParameter` instances.
-        Converted via ``to_dict()`` and matched/created by ``type`` ("depot" or "opportunity").
+        Matched by ``type`` ("depot" or "opportunity"). Assumes one ChargingPointType per depot
+        and one per station. ``name`` must be set if a new ChargingPointType needs to be created.
     :param charging_infra_params: A list of :class:`ChargingInfrastructureTCOParameter` instances.
         Converted via ``to_dict()`` and applied to stations by ``type`` ("station" or "depot").
     """
 
     with create_session(scenario, database_url) as (session, scenario):
+
+
+
+
         # --- Scenario TCO parameters ---
         if scenario_params is not None:
             scenario.tco_parameters = scenario_params.to_dict()
@@ -410,7 +430,7 @@ def init_tco_parameters(
                     )
                     continue
 
-                vt.tco_parameters = vt_param.to_dict(vt.id)
+                vt.tco_parameters = vt_param.to_dict()
 
         # --- Battery types: match via vehicle_name_short ---
         if battery_type_params is not None:
@@ -427,7 +447,7 @@ def init_tco_parameters(
                 if vt is None:
                     warnings.warn(
                         f"VehicleType with name_short '{bt_param.vehicle_name_short}' not found "
-                        f"in scenario {scenario.id}. Skipping battery '{bt_param.name}'."
+                        f"in scenario {scenario.id}. Skipping."
                     )
                     continue
 
@@ -438,11 +458,15 @@ def init_tco_parameters(
                         .filter(BatteryType.id == vt.battery_type_id)
                         .one()
                     )
-                    battery_type.tco_parameters = bt_param.to_dict(battery_type.id)
+                    battery_type.tco_parameters = bt_param.to_dict()
                 else:
-                    # Create new battery type. specific_mass and chemistry are taken from the
-                    # dataclass defaults — override them in the config if the defaults are not
-                    # appropriate for your scenario.
+                    # Create new battery type — specific_mass and chemistry are required.
+                    if bt_param.specific_mass is None or bt_param.chemistry is None:
+                        raise ValueError(
+                            f"BatteryTypeTCOParameter for vehicle '{bt_param.vehicle_name_short}' "
+                            f"has no existing BatteryType, but specific_mass and chemistry are not set. "
+                            f"Provide these fields to allow creating a new BatteryType."
+                        )
                     new_battery_type = BatteryType(
                         scenario_id=scenario.id,
                         specific_mass=bt_param.specific_mass,
@@ -453,15 +477,17 @@ def init_tco_parameters(
                     vt.battery_type = new_battery_type
 
         # --- Charging point types: match existing by association, or create new ---
+        #
+        # ASSUMPTION: each depot has exactly one ChargingPointType (matched via Area) and each
+        # station has exactly one ChargingPointType (matched via Station). This is enforced by the
+        # assert below. If multiple charging point types per depot or station are needed in the
+        # future, the matching query (currently selecting .distinct() ChargingPointTypes across all
+        # Areas/Stations) must be replaced by per-location lookup, and the parameter dataclass /
+        # match key will need to identify which specific type is being set.
         if charging_point_type_params is not None:
             for cp_param in charging_point_type_params:
-                cp_dict = cp_param.to_dict()
-
                 match cp_param.type:
                     case "depot":
-                        # Try to find existing ChargingPointTypes linked to Areas.
-                        # Currently assumes at most one depot charging point type per scenario.
-                        # TODO: support multiple depot charging point types if needed.
                         existing_cps = (
                             session.query(ChargingPointType)
                             .join(Area, Area.charging_point_type_id == ChargingPointType.id)
@@ -474,12 +500,18 @@ def init_tco_parameters(
                             f"{scenario.id}, found {len(existing_cps)}."
                         )
                         if existing_cps:
-                            existing_cps[0].tco_parameters = cp_dict
+                            existing_cps[0].tco_parameters = cp_param.to_dict()
                         else:
+                            if cp_param.name is None:
+                                raise ValueError(
+                                    f"ChargingPointTypeTCOParameter of type 'depot' has no existing "
+                                    f"ChargingPointType, but name is not set. Provide name to allow "
+                                    f"creating a new ChargingPointType."
+                                )
                             new_cp_type = ChargingPointType(
                                 name=cp_param.name,
                                 scenario_id=scenario.id,
-                                tco_parameters=cp_dict,
+                                tco_parameters=cp_param.to_dict(),
                             )
                             session.add(new_cp_type)
                             charging_areas = session.query(Area).filter(
@@ -490,9 +522,6 @@ def init_tco_parameters(
                                 area.charging_point_type = new_cp_type
 
                     case "opportunity":
-                        # Try to find existing ChargingPointTypes linked to Stations.
-                        # Currently assumes at most one opportunity charging point type per scenario.
-                        # TODO: support multiple opportunity charging point types if needed.
                         existing_cps = (
                             session.query(ChargingPointType)
                             .join(Station, Station.charging_point_type_id == ChargingPointType.id)
@@ -505,12 +534,18 @@ def init_tco_parameters(
                             f"{scenario.id}, found {len(existing_cps)}."
                         )
                         if existing_cps:
-                            existing_cps[0].tco_parameters = cp_dict
+                            existing_cps[0].tco_parameters = cp_param.to_dict()
                         else:
+                            if cp_param.name is None:
+                                raise ValueError(
+                                    f"ChargingPointTypeTCOParameter of type 'opportunity' has no "
+                                    f"existing ChargingPointType, but name is not set. Provide name "
+                                    f"to allow creating a new ChargingPointType."
+                                )
                             new_cp_type = ChargingPointType(
                                 name=cp_param.name,
                                 scenario_id=scenario.id,
-                                tco_parameters=cp_dict,
+                                tco_parameters=cp_param.to_dict(),
                             )
                             session.add(new_cp_type)
                             charging_station_ids = (
@@ -534,12 +569,17 @@ def init_tco_parameters(
                             f"Unknown charging point type: {cp_param.type}"
                         )
 
-        # --- Charging infrastructure: convert to dict, same matching logic ---
+        # --- Charging infrastructure ---
+        #
+        # ASSUMPTION: all opportunity-charging stations share the same infrastructure TCO
+        # parameters, and all depot stations share the same infrastructure TCO parameters.
+        # The same dict is written to every station of the matching type. If per-station
+        # parameters are needed in the future, replace the bulk loop below with a per-station
+        # lookup and introduce a station identifier (e.g. station name) as a match key in
+        # ChargingInfrastructureTCOParameter.
         if charging_infra_params is not None:
             for infra_param in charging_infra_params:
-                infra_dict = infra_param.to_dict()
-
-                match infra_dict.get("type"):
+                match infra_param.type:
                     case "station":
                         charging_station_ids = (
                             session.query(distinct(Event.station_id))
@@ -555,7 +595,7 @@ def init_tco_parameters(
                                 .filter(Station.id == station_id[0])
                                 .one()
                             )
-                            station.tco_parameters = infra_dict
+                            station.tco_parameters = infra_param.to_dict()
                     case "depot":
                         depot_stations = (
                             session.query(Depot.station_id)
@@ -568,10 +608,10 @@ def init_tco_parameters(
                                 .filter(Station.id == station_id[0])
                                 .one()
                             )
-                            station.tco_parameters = infra_dict
+                            station.tco_parameters = infra_param.to_dict()
                     case _:
                         raise ValueError(
-                            f"Unknown infrastructure type: {infra_dict.get('type')}"
+                            f"Unknown infrastructure type: {infra_param.type}"
                         )
 
         session.commit()

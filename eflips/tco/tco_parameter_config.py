@@ -1,4 +1,4 @@
-"""Dataclass definitions for TCO parameters."""
+"""Dataclass definitions for TCO parameters and results."""
 
 from dataclasses import dataclass, asdict
 from typing import Dict, Any, Optional
@@ -9,32 +9,29 @@ class VehicleTypeTCOParameter:
     """TCO parameters for a vehicle type."""
 
     name_short: str
-    name: str
     useful_life: int
     procurement_cost: float
     cost_escalation: float
+    name: Optional[str] = None
     average_electricity_consumption: Optional[float] = None
     average_diesel_consumption: Optional[float] = None
-    procurement_cost_diesel_equivalent: Optional[float] = None
-    cost_escalation_diesel_equivalent: Optional[float] = None
-    
 
-    def to_dict(self, vehicle_id: int) -> Dict[str, Any]:
+    def __post_init__(self):
+        if (self.average_electricity_consumption is None) == (self.average_diesel_consumption is None):
+            raise ValueError(
+                "Exactly one of average_electricity_consumption or average_diesel_consumption must be set."
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
         d = {
-            "id": vehicle_id,
-            "name": self.name,
             "useful_life": self.useful_life,
             "procurement_cost": self.procurement_cost,
             "cost_escalation": self.cost_escalation,
         }
         if self.average_electricity_consumption is not None:
             d["average_electricity_consumption"] = self.average_electricity_consumption
-        if self.average_diesel_consumption is not None:
+        else:
             d["average_diesel_consumption"] = self.average_diesel_consumption
-        if self.procurement_cost_diesel_equivalent is not None:
-            d["procurement_cost_diesel_equivalent"] = self.procurement_cost_diesel_equivalent
-        if self.cost_escalation_diesel_equivalent is not None:
-            d["cost_escalation_diesel_equivalent"] = self.cost_escalation_diesel_equivalent
         return d
 
 
@@ -42,32 +39,20 @@ class VehicleTypeTCOParameter:
 class BatteryTypeTCOParameter:
     """TCO parameters for a battery type."""
 
-    name: str
     vehicle_name_short: str
     procurement_cost: float
     useful_life: int
     cost_escalation: float
-    vehicle_type_id: Optional[int] = None
-    # Used when creating a new BatteryType in the database (i.e. no existing BatteryType
-    # is found for the associated VehicleType). These provide the required model fields.
-    specific_mass: float = 1.0
-    chemistry: str = "unknown"
+    # Required only when no BatteryType exists yet for the associated VehicleType.
+    specific_mass: Optional[float] = None
+    chemistry: Optional[str] = None
 
-    # TODO considering asdict() or dacite package
-
-    def to_dict(self, battery_id: Optional[int] = None) -> Dict[str, Any]:
-        d = {
-            "name": self.name,
-            "vehicle_name_short": self.vehicle_name_short,
+    def to_dict(self) -> Dict[str, Any]:
+        return {
             "procurement_cost": self.procurement_cost,
             "useful_life": self.useful_life,
             "cost_escalation": self.cost_escalation,
         }
-        if battery_id is not None:
-            d["id"] = battery_id
-        if self.vehicle_type_id is not None:
-            d["vehicle_type_id"] = self.vehicle_type_id
-        return d
 
 
 @dataclass
@@ -75,22 +60,18 @@ class ChargingPointTypeTCOParameter:
     """TCO parameters for a charging point type."""
 
     type: str
-    name: str
     procurement_cost: float
     useful_life: int
     cost_escalation: float
+    # Required only when no ChargingPointType exists yet for the associated depot/station.
+    name: Optional[str] = None
 
-    def to_dict(self, charger_id: Optional[int] = None) -> Dict[str, Any]:
-        d = {
-            "type": self.type,
-            "name": self.name,
+    def to_dict(self) -> Dict[str, Any]:
+        return {
             "procurement_cost": self.procurement_cost,
             "useful_life": self.useful_life,
             "cost_escalation": self.cost_escalation,
         }
-        if charger_id is not None:
-            d["id"] = charger_id
-        return d
 
 
 @dataclass
@@ -98,13 +79,16 @@ class ChargingInfrastructureTCOParameter:
     """TCO parameters for charging infrastructure."""
 
     type: str
-    name: str
     procurement_cost: float
     useful_life: int
     cost_escalation: float
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        return {
+            "procurement_cost": self.procurement_cost,
+            "useful_life": self.useful_life,
+            "cost_escalation": self.cost_escalation,
+        }
 
 
 @dataclass
@@ -150,3 +134,29 @@ class ScenarioTCOParameter:
         d = asdict(self)
         # Remove None optional fields so they don't clutter the stored dict
         return {k: v for k, v in d.items() if v is not None}
+
+
+@dataclass
+class TCOResult:
+    """Aggregated TCO results for a scenario, produced by :class:`TCOCalculator.calculate`."""
+
+    project_duration: int
+    """Project duration in years."""
+
+    annual_fleet_mileage: float
+    """Annual fleet mileage in km/year."""
+
+    total_capex: float
+    """Total CAPEX (net present value) over the project duration in EUR."""
+
+    total_opex: float
+    """Total OPEX (net present value) over the project duration in EUR."""
+
+    tco_over_project_duration: float
+    """Total TCO (CAPEX + OPEX, net present value) in EUR."""
+
+    tco_per_km: float
+    """Specific TCO in EUR/km over the total fleet-km of the project duration."""
+
+    tco_by_type: Dict[str, float]
+    """Specific TCO (EUR/km) broken down by cost category (e.g. VEHICLE, ENERGY, STAFF)."""
