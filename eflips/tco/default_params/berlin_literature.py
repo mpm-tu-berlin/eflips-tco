@@ -44,7 +44,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=275000.0,
         cost_escalation=0.02,
-        average_diesel_consumption=1.48,
+        average_diesel_consumption=0.449,
     ),
     VehicleTypeTCOParameter(
         name_short="Diesel DD",
@@ -52,7 +52,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=330000.0,
         cost_escalation=0.02,
-        average_diesel_consumption=2.16,
+        average_diesel_consumption=0.589,
     ),
     VehicleTypeTCOParameter(
         name_short="Diesel GN",
@@ -60,7 +60,7 @@ VEHICLE_TYPES = [
         useful_life=14,
         procurement_cost=510000.0,
         cost_escalation=0.02,
-        average_diesel_consumption=2.16,
+        average_diesel_consumption=0.589,
     ),
 ]
 
@@ -134,7 +134,7 @@ SCENARIO_TCO = ScenarioTCOParameter(
     inflation_rate=0.02,
     staff_cost=25.0,  # calculated: 35,000 EUR p.a. per driver / 1600 h p.a. per driver
     fuel_cost={"diesel": 1.5, "electricity": 0.1794},
-    vehicle_maint_cost={"diesel": 0.45, "electricity": 0.35},
+    vehicle_maint_cost={"diesel": 0.35, "electricity": 0.35},
     infra_maint_cost=1000,  # maintenance cost infrastructure per year and charging slot
     cost_escalation_rate={
         "general": 0.02,
