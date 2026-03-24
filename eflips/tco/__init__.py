@@ -50,4 +50,3 @@ def calculate_tco(
 
         result = tco_calculator.calculate()
         return result.tco_by_type
-

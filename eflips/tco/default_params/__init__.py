@@ -12,6 +12,7 @@ Usage:
     vehicle_types = params.VEHICLE_TYPES
     scenario_tco = params.SCENARIO_TCO
 """
+
 import importlib.util
 from pathlib import Path
 from types import ModuleType
@@ -61,9 +62,7 @@ def get_default_params(scenario_name: str) -> ModuleType:
     """
     if scenario_name not in SCENARIOS:
         available = ", ".join(SCENARIOS.keys())
-        raise KeyError(
-            f"Unknown scenario '{scenario_name}'. Available: {available}"
-        )
+        raise KeyError(f"Unknown scenario '{scenario_name}'. Available: {available}")
     return SCENARIOS[scenario_name]
 
 

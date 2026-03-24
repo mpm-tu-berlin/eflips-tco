@@ -17,7 +17,9 @@ class VehicleTypeTCOParameter:
     average_diesel_consumption: Optional[float] = None
 
     def __post_init__(self):
-        if (self.average_electricity_consumption is None) == (self.average_diesel_consumption is None):
+        if (self.average_electricity_consumption is None) == (
+            self.average_diesel_consumption is None
+        ):
             raise ValueError(
                 "Exactly one of average_electricity_consumption or average_diesel_consumption must be set."
             )

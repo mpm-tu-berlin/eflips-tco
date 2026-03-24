@@ -47,7 +47,11 @@ def load_capex_items_vehicle(session, scenario):
     list_vt_asset = []
     for vehicle_type, vehicle_count, tco_parameters in list_vt_count_parameter:
         # Get the total annual mileage for the respective vehicle type
-        fuel_suffix = "(Diesel)" if vehicle_type.energy_source == EnergySource.DIESEL else "(Electric)"
+        fuel_suffix = (
+            "(Diesel)"
+            if vehicle_type.energy_source == EnergySource.DIESEL
+            else "(Electric)"
+        )
         asset_this_vtype = CapexItem(
             name=f"{vehicle_type.name} {fuel_suffix}",
             type=CapexItemType.VEHICLE,
@@ -163,7 +167,6 @@ def load_capex_items_infrastructure(session, scenario):
 
     # Get the charging stations and the respective tco parameters.
 
-
     depots = (
         session.query(
             func.count(func.distinct(Station.id)),
@@ -195,9 +198,6 @@ def load_capex_items_infrastructure(session, scenario):
         .group_by(Station.tco_parameters)
         .all()
     )
-
-
-
 
     # Add all stations grouped by type and tco parameters to the infrastructure dictionary.
 
@@ -309,10 +309,7 @@ def get_mileage_per_vehicle_type(session, scenario) -> Dict[VehicleType, float]:
     )
 
     period_per_year = get_simulation_period(session=session, scenario=scenario)[1]
-    return {
-        vt: distance / 1000 * period_per_year
-        for vt, distance in vt_mileage
-    }
+    return {vt: distance / 1000 * period_per_year for vt, distance in vt_mileage}
 
 
 # Calculate the annual driver hours.
@@ -404,9 +401,6 @@ def init_tco_parameters(
 
     with create_session(scenario, database_url) as (session, scenario):
 
-
-
-
         # --- Scenario TCO parameters ---
         if scenario_params is not None:
             scenario.tco_parameters = scenario_params.to_dict()
@@ -490,7 +484,10 @@ def init_tco_parameters(
                     case "depot":
                         existing_cps = (
                             session.query(ChargingPointType)
-                            .join(Area, Area.charging_point_type_id == ChargingPointType.id)
+                            .join(
+                                Area,
+                                Area.charging_point_type_id == ChargingPointType.id,
+                            )
                             .filter(Area.scenario_id == scenario.id)
                             .distinct()
                             .all()
@@ -524,7 +521,10 @@ def init_tco_parameters(
                     case "opportunity":
                         existing_cps = (
                             session.query(ChargingPointType)
-                            .join(Station, Station.charging_point_type_id == ChargingPointType.id)
+                            .join(
+                                Station,
+                                Station.charging_point_type_id == ChargingPointType.id,
+                            )
                             .filter(Station.scenario_id == scenario.id)
                             .distinct()
                             .all()

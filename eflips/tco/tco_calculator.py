@@ -96,7 +96,9 @@ class TCOCalculator:
             for vt, mileage in self.mileage_per_vt.items():
                 # TODO what if we dont have an energy source? Should we just ignore it or put it in an "unknown" category?
                 key = vt.energy_source.name
-                mileage_by_energy_source[key] = mileage_by_energy_source.get(key, 0.0) + mileage
+                mileage_by_energy_source[key] = (
+                    mileage_by_energy_source.get(key, 0.0) + mileage
+                )
             self.mileage_by_energy_source = mileage_by_energy_source
 
             if capex_items is None:
@@ -148,7 +150,9 @@ class TCOCalculator:
 
         for opex_item in self.opex_items:
             cost = sum(
-                net_present_value(opex_item.future_cost(year), year, self.inflation_rate)
+                net_present_value(
+                    opex_item.future_cost(year), year, self.inflation_rate
+                )
                 for year in range(self.project_duration)
             )
             list_of_items.append(opex_item)
@@ -163,7 +167,9 @@ class TCOCalculator:
         self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
 
         tco_by_type = {
-            t: float(self.tco_by_item[self.tco_by_item["type"] == t]["Specific Cost"].sum())
+            t: float(
+                self.tco_by_item[self.tco_by_item["type"] == t]["Specific Cost"].sum()
+            )
             for t in set(self.tco_by_item["type"].values)
         }
 
@@ -263,7 +269,9 @@ class TCOCalculator:
 
         # Get the number of charging infrastructure and slots by type. There are only depot or
         # terminal stop (opportunity) charging stations.
-        assets_infrastructure, total_slots = load_capex_items_infrastructure(session, self.scenario)
+        assets_infrastructure, total_slots = load_capex_items_infrastructure(
+            session, self.scenario
+        )
 
         capex_items = (
             list(assets_vehicle) + list(assets_battery) + list(assets_infrastructure)
@@ -287,29 +295,35 @@ class TCOCalculator:
 
         # Staff cost
         total_driver_hours = calculate_total_driver_hours(session, self.scenario)
-        list_opex_items.append(OpexItem(
-            name="Staff Cost",
-            type=OpexItemType.STAFF,
-            unit_cost=scenario_params["staff_cost"],
-            usage_amount=total_driver_hours,
-            cost_escalation=escalation["staff"],
-        ))
+        list_opex_items.append(
+            OpexItem(
+                name="Staff Cost",
+                type=OpexItemType.STAFF,
+                unit_cost=scenario_params["staff_cost"],
+                usage_amount=total_driver_hours,
+                cost_escalation=escalation["staff"],
+            )
+        )
 
         # Energy cost
         match self.energy_consumption_mode:
             case "constant":
                 electric_consumption = sum(
-                    self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                    self.const_consumption.get(vt, 0.0)
+                    * self.mileage_per_vt.get(vt, 0.0)
                     for vt in self.const_consumption
                     if vt.energy_source == EnergySource.BATTERY_ELECTRIC
                 )
                 diesel_consumption = sum(
-                    self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                    self.const_consumption.get(vt, 0.0)
+                    * self.mileage_per_vt.get(vt, 0.0)
                     for vt in self.const_consumption
                     if vt.energy_source == EnergySource.DIESEL
                 )
             case "simulated":
-                electric_consumption = calc_energy_consumption_simulated(session, self.scenario)
+                electric_consumption = calc_energy_consumption_simulated(
+                    session, self.scenario
+                )
                 if diesel_mileage > 0:
                     logger.warning(
                         "Diesel mileage detected in 'simulated' mode. "
@@ -317,7 +331,8 @@ class TCOCalculator:
                         "average_diesel_consumption in VehicleType.tco_parameters."
                     )
                     diesel_consumption = sum(
-                        self.const_consumption.get(vt, 0.0) * self.mileage_per_vt.get(vt, 0.0)
+                        self.const_consumption.get(vt, 0.0)
+                        * self.mileage_per_vt.get(vt, 0.0)
                         for vt in self.const_consumption
                         if vt.energy_source == EnergySource.DIESEL
                     )
@@ -329,41 +344,49 @@ class TCOCalculator:
                 )
 
         if electric_mileage > 0:
-            list_opex_items.append(OpexItem(
-                name="Energy Cost (Electric)",
-                type=OpexItemType.ENERGY,
-                unit_cost=scenario_params["fuel_cost"]["electricity"],
-                usage_amount=electric_consumption,
-                cost_escalation=escalation["electricity"],
-            ))
+            list_opex_items.append(
+                OpexItem(
+                    name="Energy Cost (Electric)",
+                    type=OpexItemType.ENERGY,
+                    unit_cost=scenario_params["fuel_cost"]["electricity"],
+                    usage_amount=electric_consumption,
+                    cost_escalation=escalation["electricity"],
+                )
+            )
 
         if diesel_mileage > 0:
-            list_opex_items.append(OpexItem(
-                name="Energy Cost (Diesel)",
-                type=OpexItemType.ENERGY,
-                unit_cost=scenario_params["fuel_cost"]["diesel"],
-                usage_amount=diesel_consumption,
-                cost_escalation=escalation["diesel"],
-            ))
+            list_opex_items.append(
+                OpexItem(
+                    name="Energy Cost (Diesel)",
+                    type=OpexItemType.ENERGY,
+                    unit_cost=scenario_params["fuel_cost"]["diesel"],
+                    usage_amount=diesel_consumption,
+                    cost_escalation=escalation["diesel"],
+                )
+            )
 
         # Vehicle maintenance cost
         if electric_mileage > 0:
-            list_opex_items.append(OpexItem(
-                name="Maintenance Cost Vehicles (Electric)",
-                type=OpexItemType.MAINTENANCE,
-                unit_cost=scenario_params["vehicle_maint_cost"]["electricity"],
-                usage_amount=electric_mileage,
-                cost_escalation=escalation["general"],
-            ))
+            list_opex_items.append(
+                OpexItem(
+                    name="Maintenance Cost Vehicles (Electric)",
+                    type=OpexItemType.MAINTENANCE,
+                    unit_cost=scenario_params["vehicle_maint_cost"]["electricity"],
+                    usage_amount=electric_mileage,
+                    cost_escalation=escalation["general"],
+                )
+            )
 
         if diesel_mileage > 0:
-            list_opex_items.append(OpexItem(
-                name="Maintenance Cost Vehicles (Diesel)",
-                type=OpexItemType.MAINTENANCE,
-                unit_cost=scenario_params["vehicle_maint_cost"]["diesel"],
-                usage_amount=diesel_mileage,
-                cost_escalation=escalation["general"],
-            ))
+            list_opex_items.append(
+                OpexItem(
+                    name="Maintenance Cost Vehicles (Diesel)",
+                    type=OpexItemType.MAINTENANCE,
+                    unit_cost=scenario_params["vehicle_maint_cost"]["diesel"],
+                    usage_amount=diesel_mileage,
+                    cost_escalation=escalation["general"],
+                )
+            )
 
         # Insurance
         total_number_vehicles = sum(
@@ -371,30 +394,36 @@ class TCOCalculator:
             for asset in self.capex_items
             if asset.type == CapexItemType.VEHICLE
         )
-        list_opex_items.append(OpexItem(
-            name="Insurance",
-            type=OpexItemType.OTHER,
-            unit_cost=scenario_params["insurance"],
-            usage_amount=total_number_vehicles,
-            cost_escalation=escalation["insurance"],
-        ))
+        list_opex_items.append(
+            OpexItem(
+                name="Insurance",
+                type=OpexItemType.OTHER,
+                unit_cost=scenario_params["insurance"],
+                usage_amount=total_number_vehicles,
+                cost_escalation=escalation["insurance"],
+            )
+        )
 
         # Taxes
-        list_opex_items.append(OpexItem(
-            name="Taxes",
-            type=OpexItemType.OTHER,
-            unit_cost=scenario_params["taxes"],
-            usage_amount=total_number_vehicles,
-            cost_escalation=escalation["general"],
-        ))
+        list_opex_items.append(
+            OpexItem(
+                name="Taxes",
+                type=OpexItemType.OTHER,
+                unit_cost=scenario_params["taxes"],
+                usage_amount=total_number_vehicles,
+                cost_escalation=escalation["general"],
+            )
+        )
 
         # Infrastructure maintenance cost
-        list_opex_items.append(OpexItem(
-            name="Maintenance Cost Infrastructure",
-            type=OpexItemType.MAINTENANCE,
-            unit_cost=scenario_params["infra_maint_cost"],
-            usage_amount=self.total_slots,
-            cost_escalation=escalation["general"],
-        ))
+        list_opex_items.append(
+            OpexItem(
+                name="Maintenance Cost Infrastructure",
+                type=OpexItemType.MAINTENANCE,
+                unit_cost=scenario_params["infra_maint_cost"],
+                usage_amount=self.total_slots,
+                cost_escalation=escalation["general"],
+            )
+        )
 
         self.opex_items = list_opex_items
