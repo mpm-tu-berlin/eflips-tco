@@ -1,4 +1,5 @@
 from eflips.tco.data_queries import init_tco_parameters
+from eflips.tco.default_params import get_params_from_file
 from eflips.tco.tco_calculator import TCOCalculator
 
 from typing import Union, Optional, Any, Dict
@@ -47,8 +48,5 @@ def calculate_tco(
                 "ENERGY": 1.0,
             }
 
-        tco_calculator.calculate()
-        result = tco_calculator.tco_by_type
-        result["INFRASTRUCTURE"] += result.get("CHARGING_POINT", 0.0)
-        result.pop("CHARGING_POINT", None)
-        return result
+        result = tco_calculator.calculate()
+        return result.tco_by_type
