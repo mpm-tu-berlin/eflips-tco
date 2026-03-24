@@ -48,8 +48,6 @@ def calculate_tco(
                 "ENERGY": 1.0,
             }
 
-        tco_calculator.calculate()
-        result = tco_calculator.tco_by_type
-        result["INFRASTRUCTURE"] += result.get("CHARGING_POINT", 0.0)
-        result.pop("CHARGING_POINT", None)
-        return result
+        result = tco_calculator.calculate()
+        return result.tco_by_type
+
