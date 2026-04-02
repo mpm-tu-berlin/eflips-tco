@@ -8,6 +8,7 @@ from eflips.model import (
     VehicleType,
     Route,
     Trip,
+    TripType,
     BatteryType,
     ChargeType,
     Scenario,
@@ -274,6 +275,8 @@ def get_annual_fleet_mileage(session, scenario) -> float:
     """
     This method gets the annual fleet mileage from the session provided.
 
+    Only revenue (passenger) trips are counted, excluding empty/deadhead trips.
+
     :param session: A session object.
     :param scenario: A scenario object.
     :return: The total annual fleet mileage in km.
@@ -287,10 +290,9 @@ def get_annual_fleet_mileage(session, scenario) -> float:
         session.query(func.sum(Route.distance))
         .join(Trip, Route.id == Trip.route_id)
         .filter(Trip.scenario_id == scenario.id)
+        .filter(Trip.trip_type == TripType.PASSENGER)
         .scalar()
     )
-
-    # TODO annual fleet mileage slightly different from the original (by 1e-5?). Need validation
 
     return total_simulated_mileage * period_per_year / 1000  # Convert to km
 
