@@ -36,7 +36,8 @@ if __name__ == "__main__":
         energy_consumption_mode="constant",
     )
 
-    tco_calculator.calculate()
+    result = tco_calculator.calculate()
 
-    print(tco_calculator.tco_unit_distance)
-    tco_calculator.visualize()
+    print(result.tco_by_type_per_km(use_revenue_km=True))
+
+
