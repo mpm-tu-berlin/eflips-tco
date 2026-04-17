@@ -9,7 +9,7 @@ import logging
 
 
 def calculate_tco(
-    scenario: Union[Scenario, int, Any], database_url: Optional[str] = None
+        scenario: Union[Scenario, int, Any], database_url: Optional[str] = None, use_revenue_km: bool = False
 ) -> Dict[str, float]:
     """
     This function calculates the Total Cost of Ownership (TCO) for a given scenario and returns a dictionary
@@ -19,6 +19,8 @@ def calculate_tco(
     :param scenario: Either a :class:`eflips.model.Scenario` object or an integer specifying the ID of a scenario in the
         database.
     :param database_url: Optional database URL to connect to if the scenario is provided as an integer.
+    :param use_revenue_km: If True, the TCO per kilometer will be calculated using the revenue kilometers instead of the
+    total vehicle kilometers.
     :return: A dictionary with TCO values categorized by type: infrastructure, staff, battery, maintenance, vehicle,
         energy and other (e.g.taxes and insurance). The unit is EUR per vehicle kilometer over the project duration.
 
@@ -30,23 +32,7 @@ def calculate_tco(
         elif not isinstance(scenario, Scenario):
             raise ValueError("scenario must be either an integer or a Scenario object")
 
-        try:
-            tco_calculator = TCOCalculator(scenario, energy_consumption_mode="constant")
-        except Exception as e:
-            logger.warning(
-                "Error in initializing TCOCalculator: %s. Returning dummy data instead",
-                e,
-            )
-
-            return {
-                "INFRASTRUCTURE": 1.0,
-                "STAFF": 1.0,
-                "BATTERY": 1.0,
-                "MAINTENANCE": 1.0,
-                "VEHICLE": 1.0,
-                "OTHER": 1.0,
-                "ENERGY": 1.0,
-            }
+        tco_calculator = TCOCalculator(scenario, energy_consumption_mode="constant")
 
         result = tco_calculator.calculate()
-        return result.tco_by_type
+        return result.tco_by_type_per_km(use_revenue_km)

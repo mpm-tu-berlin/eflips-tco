@@ -145,8 +145,11 @@ class TCOResult:
     project_duration: int
     """Project duration in years."""
 
-    annual_fleet_mileage: float
-    """Annual fleet mileage in km/year."""
+    annual_vehicle_mileage: float
+    """Annual total fleet mileage (all trips) in km/year."""
+
+    annual_revenue_mileage: float
+    """Annual revenue (passenger-trip) mileage in km/year."""
 
     total_capex: float
     """Total CAPEX (net present value) over the project duration in EUR."""
@@ -157,8 +160,31 @@ class TCOResult:
     tco_over_project_duration: float
     """Total TCO (CAPEX + OPEX, net present value) in EUR."""
 
-    tco_per_km: float
-    """Specific TCO in EUR/km over the total fleet-km of the project duration."""
-
     tco_by_type: Dict[str, float]
     """Specific TCO (EUR/km) broken down by cost category (e.g. VEHICLE, ENERGY, STAFF)."""
+    """Total TCO (EUR) broken down by cost category (e.g. VEHICLE, ENERGY, STAFF)."""
+
+    @property
+    def tco_per_vehicle_km(self) -> float:
+        """Specific TCO in EUR per total vehicle-km."""
+        return self.tco_over_project_duration / (
+            self.annual_vehicle_mileage * self.project_duration
+        )
+
+    @property
+    def tco_per_revenue_km(self) -> float:
+        """Specific TCO in EUR per revenue-km."""
+        return self.tco_over_project_duration / (
+            self.annual_revenue_mileage * self.project_duration
+        )
+
+    def tco_by_type_per_km(self, use_revenue_km: bool = False) -> Dict[str, float]:
+        """Return tco_by_type as EUR/km.
+
+        :param use_revenue_km: If True, divide by revenue-km; otherwise by vehicle-km.
+        """
+        mileage = (
+            self.annual_revenue_mileage if use_revenue_km else self.annual_vehicle_mileage
+        )
+        total_km = mileage * self.project_duration
+        return {k: v / total_km for k, v in self.tco_by_type.items()}

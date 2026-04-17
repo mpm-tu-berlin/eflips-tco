@@ -271,11 +271,9 @@ def calc_energy_consumption_simulated(session, scenario):
 # Get the fleet mileage by vehicle type in km.
 
 
-def get_annual_fleet_mileage(session, scenario) -> float:
+def get_annual_fleet_mileage(session, scenario) -> Tuple[float, float]:
     """
     This method gets the annual fleet mileage from the session provided.
-
-    Only revenue (passenger) trips are counted, excluding empty/deadhead trips.
 
     :param session: A session object.
     :param scenario: A scenario object.
@@ -286,7 +284,14 @@ def get_annual_fleet_mileage(session, scenario) -> float:
         session=session, scenario=scenario
     )
 
-    total_simulated_mileage = (
+    total_simulated_vehicle_mileage = (
+        session.query(func.sum(Route.distance))
+        .join(Trip, Route.id == Trip.route_id)
+        .filter(Trip.scenario_id == scenario.id)
+        .scalar()
+    )
+
+    total_simulated_revenue_mileage = (
         session.query(func.sum(Route.distance))
         .join(Trip, Route.id == Trip.route_id)
         .filter(Trip.scenario_id == scenario.id)
@@ -294,7 +299,9 @@ def get_annual_fleet_mileage(session, scenario) -> float:
         .scalar()
     )
 
-    return total_simulated_mileage * period_per_year / 1000  # Convert to km
+    return (total_simulated_vehicle_mileage * period_per_year / 1000,
+            total_simulated_revenue_mileage * period_per_year / 1000)
+    # Convert to km
 
 
 def get_mileage_per_vehicle_type(session, scenario) -> Dict[VehicleType, float]:

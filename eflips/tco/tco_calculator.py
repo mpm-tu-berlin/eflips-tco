@@ -58,8 +58,9 @@ class TCOCalculator:
                 session.query(Scenario).filter(Scenario.id == scenario.id).one()
             )
 
-            annual_fleet_mileage = get_annual_fleet_mileage(session, self.scenario)
-            self.annual_fleet_mileage = annual_fleet_mileage
+            vehicle_km, revenue_km = get_annual_fleet_mileage(session, self.scenario)
+            self.annual_vehicle_mileage = vehicle_km
+            self.annual_revenue_mileage = revenue_km
             self.energy_consumption_mode = energy_consumption_mode
 
             # Build const_consumption for all vehicle types
@@ -160,26 +161,24 @@ class TCOCalculator:
             total_opex += cost
 
         tco = total_capex + total_opex
-        total_km = self.annual_fleet_mileage * self.project_duration
 
         self.tco_by_item = pd.DataFrame({"Item": list_of_items, "Cost": list_of_costs})
-        self.tco_by_item["Specific Cost"] = self.tco_by_item["Cost"] / total_km
         self.tco_by_item["type"] = self.tco_by_item["Item"].apply(lambda x: x.type.name)
 
         tco_by_type = {
             t: float(
-                self.tco_by_item[self.tco_by_item["type"] == t]["Specific Cost"].sum()
+                self.tco_by_item[self.tco_by_item["type"] == t]["Cost"].sum()
             )
             for t in set(self.tco_by_item["type"].values)
         }
 
         self.result = TCOResult(
             project_duration=self.project_duration,
-            annual_fleet_mileage=self.annual_fleet_mileage,
+            annual_vehicle_mileage=self.annual_vehicle_mileage,
+            annual_revenue_mileage=self.annual_revenue_mileage,
             total_capex=total_capex,
             total_opex=total_opex,
             tco_over_project_duration=tco,
-            tco_per_km=tco / total_km,
             tco_by_type=tco_by_type,
         )
         return self.result
@@ -211,7 +210,9 @@ class TCOCalculator:
                 return "electric"
             return "other"
 
+        total_vehicle_km = self.annual_vehicle_mileage * self.project_duration
         df = self.tco_by_item.copy()
+        df["Specific Cost"] = df["Cost"] / total_vehicle_km
         df["fuel"] = df["Item"].apply(lambda x: _fuel_tag(x.name))
 
         seen_labels = set()
@@ -245,7 +246,7 @@ class TCOCalculator:
                 bottom += cost
                 ax.bar_label(current_bar, label_type="center", padding=3, fmt="%.2f")
 
-        total = self.result.tco_per_km
+        total = self.result.tco_per_vehicle_km
         ax.text(
             0,
             total + 0.05,
