@@ -333,8 +333,10 @@ def calculate_total_driver_hours(
         .filter(
             Event.scenario_id == scenario.id,
             or_(
-                Event.event_type == "DRIVING",
-                Event.event_type == "CHARGING_OPPORTUNITY",
+                Event.event_type == EventType.DRIVING,
+                Event.event_type == EventType.CHARGING_OPPORTUNITY,
+                and_(Event.event_type == EventType.STANDBY_DEPARTURE, Event.area_id.is_(None)),
+                and_(Event.event_type == EventType.STANDBY, Event.area_id.is_(None)),
             ),
         )
         .all()
