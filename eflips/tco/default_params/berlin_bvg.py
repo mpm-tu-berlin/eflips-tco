@@ -39,21 +39,18 @@ VEHICLE_TYPES = [
 # Battery type defaults
 BATTERY_TYPES = [
     BatteryTypeTCOParameter(
-        name="Ebusco 3.0 12 large battery",
         vehicle_name_short="EN",
         procurement_cost=190,
         useful_life=7,
         cost_escalation=-0.03,
     ),
     BatteryTypeTCOParameter(
-        name="Solaris Urbino 18 large battery",
         vehicle_name_short="DD",
         procurement_cost=190,
         useful_life=7,
         cost_escalation=-0.03,
     ),
     BatteryTypeTCOParameter(
-        name="Alexander Dennis Enviro500EV large battery",
         vehicle_name_short="GN",
         procurement_cost=190,
         useful_life=7,
@@ -85,14 +82,12 @@ CHARGING_POINT_TYPES = [
 CHARGING_INFRASTRUCTURE = [
     ChargingInfrastructureTCOParameter(
         type="depot",
-        name="Depot Charging Infrastructure",
         procurement_cost=2000000.0,
         useful_life=20,
         cost_escalation=0,
     ),
     ChargingInfrastructureTCOParameter(
         type="station",
-        name="Opportunity Charging Infrastructure",
         procurement_cost=500000.0,
         useful_life=20,
         cost_escalation=0,
